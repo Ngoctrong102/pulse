@@ -36,11 +36,15 @@ pip install -r .pulse/requirements.txt   # PyYAML for the vendored engine
 .pulse/bin/pulse next --prompt
 ```
 
-Optional agent rules (writes into `.cursor/` only when you ask):
+Optional agent rules (only when you ask):
 
 ```bash
-pulse cursor link
+pulse cursor link            # Cursor rules / skills / hooks
 pulse cursor unlink
+
+pulse github link            # GitHub Copilot instructions (.github/)
+pulse github unlink
+# alias: pulse copilot link
 ```
 
 ## Layout after init
@@ -52,7 +56,8 @@ your-project/
     tools/                engine
     plugins/              host plugins
     bin/pulse             CLI
-    cursor/               rule templates (not auto-linked)
+    cursor/               Cursor rule templates (opt-in link)
+    github/               Copilot instruction templates (opt-in link)
     BOARD.md …
   src/ …                  ← your code, untouched
 ```

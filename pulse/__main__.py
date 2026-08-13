@@ -127,16 +127,17 @@ your product architecture — only cards, views, and tools live here.
 .pulse/bin/pulse mismatch detect
 ```
 
-Optional agent rules: `.pulse/cursor/` — link into Cursor with:
+Optional agent rules: `.pulse/cursor/` (Cursor) and `.pulse/github/` (GitHub Copilot) — link with:
 
 ```bash
 pulse cursor link
+pulse github link
 ```
 
 Commit `.pulse/` if the team should share status (pulse never auto-edits `.gitignore`).
 
 **Agents:** edit cards under `.pulse/features/` (and `.pulse/cleancode/`), not vendored
-`.pulse/tools/` — refresh the engine with `pulse upgrade` from the kit.
+`.pulse/tools/` — refresh the engine with `pulse update` from the kit.
 """
 
 
@@ -197,9 +198,11 @@ def init_project(
         _copytree(plugins_src, pulse / "plugins", force=force)
     (pulse / "plugins").mkdir(parents=True, exist_ok=True)
 
-    # Agent templates (NOT installed into .cursor unless user links)
+    # Agent templates (NOT installed into .cursor / .github unless user links)
     if (EMBED_ROOT / ".cursor").is_dir():
         _copytree(EMBED_ROOT / ".cursor", pulse / "cursor", force=force)
+    if (EMBED_ROOT / ".github").is_dir():
+        _copytree(EMBED_ROOT / ".github", pulse / "github", force=force)
 
     # Bin
     bin_pulse = pulse / "bin" / "pulse"
@@ -273,6 +276,8 @@ def upgrade_project(target: Path) -> None:
     _copytree(EMBED_ROOT / "tools", pulse / "tools", force=True)
     if (EMBED_ROOT / ".cursor").is_dir():
         _copytree(EMBED_ROOT / ".cursor", pulse / "cursor", force=True)
+    if (EMBED_ROOT / ".github").is_dir():
+        _copytree(EMBED_ROOT / ".github", pulse / "github", force=True)
 
     bin_pulse = pulse / "bin" / "pulse"
     bin_pulse.parent.mkdir(parents=True, exist_ok=True)
@@ -440,6 +445,120 @@ def cursor_unlink(project_root: Path) -> None:
     print("  (rules/skills/hook scripts left in place — delete manually if desired)")
 
 
+_PULSE_GH_BEGIN = "<!-- pulse:begin -->"
+_PULSE_GH_END = "<!-- pulse:end -->"
+_PULSE_GH_OWNED = (
+    "instructions/pulse-features.instructions.md",
+    "instructions/pulse-quality.instructions.md",
+    "pulse-quality-raise.md",
+)
+
+
+def _merge_marked_block(existing: str, block: str) -> str:
+    """Insert or replace a <!-- pulse:begin -->…<!-- pulse:end --> section."""
+    block = block.strip()
+    if _PULSE_GH_BEGIN not in block:
+        block = f"{_PULSE_GH_BEGIN}\n{block}\n{_PULSE_GH_END}"
+    if _PULSE_GH_BEGIN in existing and _PULSE_GH_END in existing:
+        start = existing.index(_PULSE_GH_BEGIN)
+        end = existing.index(_PULSE_GH_END) + len(_PULSE_GH_END)
+        return (existing[:start].rstrip() + "\n\n" + block + "\n\n" + existing[end:].lstrip()).strip() + "\n"
+    if existing.strip():
+        return existing.rstrip() + "\n\n" + block + "\n"
+    return block + "\n"
+
+
+def _strip_marked_block(existing: str) -> str:
+    if _PULSE_GH_BEGIN not in existing or _PULSE_GH_END not in existing:
+        return existing
+    start = existing.index(_PULSE_GH_BEGIN)
+    end = existing.index(_PULSE_GH_END) + len(_PULSE_GH_END)
+    return (existing[:start].rstrip() + "\n\n" + existing[end:].lstrip()).strip() + (
+        "\n" if existing.endswith("\n") or existing[end:].strip() else ""
+    )
+
+
+def github_link(project_root: Path, *, force: bool) -> None:
+    """Opt-in: install GitHub Copilot instructions from ``.pulse/github``."""
+    project_root = project_root.expanduser().resolve()
+    src = project_root / ".pulse" / "github"
+    if not src.is_dir():
+        _die("missing .pulse/github — run `pulse init` (or `pulse update`) first")
+    dst = project_root / ".github"
+    dst.mkdir(parents=True, exist_ok=True)
+
+    # Path-specific instructions + rubric appendix
+    for rel in (
+        "instructions/pulse-features.instructions.md",
+        "instructions/pulse-quality.instructions.md",
+    ):
+        s = src / rel
+        if not s.is_file():
+            continue
+        t = dst / rel
+        if t.exists() and not force:
+            continue
+        t.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(s, t)
+
+    rubric_src = src / "quality-raise.md"
+    if rubric_src.is_file():
+        rubric_dst = dst / "pulse-quality-raise.md"
+        if force or not rubric_dst.exists():
+            shutil.copy2(rubric_src, rubric_dst)
+
+    # Repo-wide Copilot instructions — merge marked block so host text survives
+    instr_src = src / "copilot-instructions.md"
+    if instr_src.is_file():
+        block = instr_src.read_text(encoding="utf-8")
+        instr_dst = dst / "copilot-instructions.md"
+        if instr_dst.is_file() and not force:
+            merged = _merge_marked_block(instr_dst.read_text(encoding="utf-8"), block)
+        elif instr_dst.is_file() and force:
+            merged = _merge_marked_block(instr_dst.read_text(encoding="utf-8"), block)
+        else:
+            merged = block if block.endswith("\n") else block + "\n"
+            if _PULSE_GH_BEGIN not in merged:
+                merged = f"{_PULSE_GH_BEGIN}\n{merged.rstrip()}\n{_PULSE_GH_END}\n"
+        instr_dst.write_text(merged, encoding="utf-8")
+
+    print(f"pulse github link → {dst}")
+    print("  Copilot instructions installed. Re-run with --force to refresh pulse sections.")
+
+
+def github_unlink(project_root: Path) -> None:
+    """Remove pulse-owned GitHub Copilot instruction files / marked blocks."""
+    project_root = project_root.expanduser().resolve()
+    dst = project_root / ".github"
+    if not dst.is_dir():
+        print("pulse github unlink: no .github/ — nothing to do")
+        return
+
+    instr = dst / "copilot-instructions.md"
+    if instr.is_file():
+        text = instr.read_text(encoding="utf-8")
+        stripped = _strip_marked_block(text).strip()
+        if stripped and stripped != text.strip():
+            instr.write_text(stripped + "\n", encoding="utf-8")
+            print(f"  stripped pulse block from {instr}")
+        elif _PULSE_GH_BEGIN in text:
+            # File was only pulse content
+            only_pulse = _strip_marked_block(text).strip() == ""
+            if only_pulse:
+                instr.unlink()
+                print(f"  removed {instr}")
+            else:
+                instr.write_text(stripped + "\n" if stripped else "", encoding="utf-8")
+
+    for rel in _PULSE_GH_OWNED:
+        path = dst / rel
+        if path.is_file():
+            path.unlink()
+            print(f"  removed {path}")
+
+    print(f"pulse github unlink → {dst}")
+
+
 def _find_bin_pulse(start: Path) -> Path | None:
     for cand in [start, *start.parents]:
         script = cand / ".pulse" / "bin" / "pulse"
@@ -470,6 +589,8 @@ def main(argv: list[str] | None = None) -> int:
         "run",
         "version",
         "cursor",
+        "github",
+        "copilot",
         "-h",
         "--help",
     }
@@ -515,6 +636,18 @@ def main(argv: list[str] | None = None) -> int:
     unlink = cur_sub.add_parser("unlink", help="Remove pulse-owned entries from .cursor/hooks.json")
     unlink.add_argument("path", nargs="?", default=".")
 
+    gh = sub.add_parser(
+        "github",
+        aliases=["copilot"],
+        help="Optional GitHub Copilot integration",
+    )
+    gh_sub = gh.add_subparsers(dest="github_cmd", required=True)
+    gh_link = gh_sub.add_parser("link", help="Install Copilot instructions into .github/")
+    gh_link.add_argument("path", nargs="?", default=".")
+    gh_link.add_argument("--force", action="store_true")
+    gh_unlink = gh_sub.add_parser("unlink", help="Remove pulse-owned Copilot instruction files")
+    gh_unlink.add_argument("path", nargs="?", default=".")
+
     run = sub.add_parser("run", help="Forward to .pulse/bin/pulse")
     run.add_argument("args", nargs=argparse.REMAINDER)
 
@@ -534,6 +667,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "cursor" and args.cursor_cmd == "unlink":
         cursor_unlink(Path(args.path))
+        return 0
+    if args.cmd in {"github", "copilot"} and getattr(args, "github_cmd", None) == "link":
+        github_link(Path(args.path), force=bool(args.force))
+        return 0
+    if args.cmd in {"github", "copilot"} and getattr(args, "github_cmd", None) == "unlink":
+        github_unlink(Path(args.path))
         return 0
     if args.cmd in {"update", "upgrade"}:
         update_cmd(Path(args.path), fetch=not bool(getattr(args, "no_fetch", False)))

@@ -105,3 +105,35 @@ def test_cursor_hooks_merge_and_unlink(demo: Path):
     stop2 = stripped["hooks"]["stop"]
     assert all(not (isinstance(e, dict) and e.get("pulse_id") == "pulse-status-sync") for e in stop2)
     assert any(isinstance(e, dict) and e.get("command") == "echo host-hook" for e in stop2)
+
+
+def test_github_copilot_link_and_unlink(demo: Path):
+    env = {**os.environ, "PYTHONPATH": str(KIT)}
+    assert (demo / ".pulse" / "github" / "copilot-instructions.md").is_file()
+
+    gh = demo / ".github"
+    gh.mkdir()
+    (gh / "copilot-instructions.md").write_text("# Host notes\n\nKeep me.\n", encoding="utf-8")
+
+    subprocess.check_call(
+        [sys.executable, "-m", "pulse", "github", "link", str(demo)],
+        env=env,
+        cwd=str(KIT),
+    )
+    text = (gh / "copilot-instructions.md").read_text(encoding="utf-8")
+    assert "Keep me." in text
+    assert "<!-- pulse:begin -->" in text
+    assert "Pulse — project operating system" in text
+    assert (gh / "instructions" / "pulse-features.instructions.md").is_file()
+    assert (gh / "pulse-quality-raise.md").is_file()
+
+    subprocess.check_call(
+        [sys.executable, "-m", "pulse", "copilot", "unlink", str(demo)],
+        env=env,
+        cwd=str(KIT),
+    )
+    leftover = (gh / "copilot-instructions.md").read_text(encoding="utf-8")
+    assert "Keep me." in leftover
+    assert "<!-- pulse:begin -->" not in leftover
+    assert not (gh / "instructions" / "pulse-features.instructions.md").exists()
+    assert not (gh / "pulse-quality-raise.md").exists()

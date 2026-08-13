@@ -14,4 +14,5 @@ While touching code/docs: **do not leave quality issues silent**.
 3. **Correctness / security / privacy blockers** → raise inline + pause (still log a card).
 4. Before ending a turn that edited/read code for its API: run the self-check in skill `quality-raise` and print a short `## Quality self-check` (even if all clean).
 
-Full rubric, Clean Code/SOLID tables, and check commands: `.cursor/skills/quality-raise/SKILL.md`.
+Full rubric, Clean Code/SOLID tables, and check commands: `.cursor/skills/quality-raise/SKILL.md`
+(or `.pulse/github/quality-raise.md` / `.github/pulse-quality-raise.md` after `pulse github link`).

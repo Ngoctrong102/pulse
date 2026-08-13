@@ -23,6 +23,7 @@ packages = ["pulse"]
 pulse = [
   "embed/tools/**/*",
   "embed/.cursor/**/*",
+  "embed/.github/**/*",
 ]
 
 [tool.setuptools.exclude-package-data]
