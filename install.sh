@@ -20,7 +20,7 @@ PY_WANT="${PULSE_PY_VERSION:-3.12}"
 VENV="$PREFIX/venv"
 UV_BIN=""
 
-log() { printf '%s\n' "$*"; }
+log() { printf '%s\n' "$*" >&2; }
 err() { printf 'pulse install: %s\n' "$*" >&2; }
 
 need_cmd() {
@@ -104,6 +104,7 @@ print_manual_python_help() {
 resolve_python() {
   local py
   if py="$(find_system_python)"; then
+    # Only the interpreter path may go to stdout (captured by caller).
     log "  using system Python: $py ($("$py" -c 'import sys; print("%d.%d"%sys.version_info[:2])'))"
     printf '%s\n' "$py"
     return 0
