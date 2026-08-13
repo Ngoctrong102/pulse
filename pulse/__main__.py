@@ -66,8 +66,14 @@ PULSE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT_ROOT="$(cd "$PULSE_HOME/.." && pwd)"
 export PULSE_HOME PROJECT_ROOT
 export PULSE_ROOT="$PROJECT_ROOT"
-PY="${PROJECT_ROOT}/.venv/bin/python"
-if [[ ! -x "$PY" ]]; then PY="python3"; fi
+PY=""
+for cand in \\
+  "${PROJECT_ROOT}/.venv/bin/python" \\
+  "${PROJECT_ROOT}/venv/bin/python"
+do
+  if [[ -x "$cand" ]]; then PY="$cand"; break; fi
+done
+if [[ -z "$PY" ]]; then PY="python3"; fi
 export PYTHONPATH="${PULSE_HOME}/tools${PYTHONPATH:+:$PYTHONPATH}"
 exec "$PY" "${PULSE_HOME}/tools/pulse-cli/__main__.py" "$@"
 '''
@@ -181,6 +187,7 @@ def init_project(
     tag_prefix: str,
     code_roots: list[str],
     force: bool,
+    with_venv: bool = True,
 ) -> None:
     if not EMBED_ROOT.is_dir():
         _die(f"embed templates missing at {EMBED_ROOT}")
@@ -226,19 +233,50 @@ def init_project(
     _write_text(pulse / "requirements.txt", "PyYAML>=6.0\n", force=force)
     _write_version_stamp(pulse, project=project)
 
+    if with_venv:
+        ensure_project_venv(project_root)
+
     print(f"pulse init → {pulse}")
     print(f"  project_root={project_root}")
     print(f"  project={project}  tag_prefix={tag_prefix}  code_roots={code_roots}")
-    print("  (only .pulse/ was written — no other project files touched)")
+    print("  (wrote .pulse/" + (" + .venv/" if with_venv else "") + ")")
     print("  next:")
-    print("    pip install -r .pulse/requirements.txt")
     print("    .pulse/bin/pulse generate")
     print("    .pulse/bin/pulse next --prompt")
-    print("    pulse cursor link   # optional: install agent rules into .cursor/")
+    print("    pulse cursor link    # optional Cursor")
+    print("    pulse github link    # optional Copilot")
 
 
 GIT_REPO = "https://github.com/Ngoctrong102/pulse.git"
 PIP_SPEC = f"git+{GIT_REPO}"
+# Layout created by install.sh (curl | bash)
+_DEFAULT_CURL_PREFIX = Path(
+    os.environ.get("PULSE_HOME")
+    or (Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share")) / "pulse")
+)
+
+
+def _curl_install_meta() -> dict[str, Any] | None:
+    meta_path = _DEFAULT_CURL_PREFIX / "install-meta.json"
+    if not meta_path.is_file():
+        # Also detect if we are running from the curl venv without meta (older).
+        try:
+            exe = Path(sys.executable).resolve()
+        except OSError:
+            return None
+        marker = Path.home() / ".local" / "share" / "pulse" / "venv"
+        if marker.is_dir() and str(marker) in str(exe):
+            return {
+                "prefix": str(marker.parent),
+                "bin_dir": str(Path.home() / ".local" / "bin"),
+                "shim": str(Path.home() / ".local" / "bin" / "pulse"),
+            }
+        return None
+    try:
+        data = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
 
 
 def _pip_install_latest() -> None:
@@ -251,13 +289,67 @@ def _pip_install_latest() -> None:
 
 
 def _pip_uninstall() -> None:
+    """Remove the pulse package; if installed via install.sh, drop venv + shim too."""
+    meta = _curl_install_meta()
     print("pulse uninstall: removing package …")
     rc = subprocess.call(
         [sys.executable, "-m", "pip", "uninstall", "-y", "pulse"],
     )
     if rc != 0:
-        _die("pip uninstall failed")
+        # Still try to wipe curl layout if present
+        if meta is None:
+            _die("pip uninstall failed")
+
+    if meta:
+        prefix = Path(str(meta.get("prefix") or _DEFAULT_CURL_PREFIX))
+        shim = Path(str(meta.get("shim") or (Path.home() / ".local" / "bin" / "pulse")))
+        if shim.is_symlink() or shim.is_file():
+            try:
+                # Only remove shim if it points at our venv
+                target = shim.resolve() if shim.is_symlink() else shim
+                venv_bin = prefix / "venv" / "bin" / "pulse"
+                if target == venv_bin.resolve() or str(prefix / "venv") in str(target):
+                    shim.unlink()
+                    print(f"  removed shim {shim}")
+            except OSError:
+                pass
+        if prefix.is_dir() and (prefix / "venv").is_dir():
+            shutil.rmtree(prefix, ignore_errors=True)
+            print(f"  removed {prefix}")
+
     print("Done. Project `.pulse/` folders were left alone (your cards stay).")
+
+
+def ensure_project_venv(project_root: Path) -> Path | None:
+    """Create ``project/.venv`` if missing and install ``.pulse/requirements.txt``.
+
+    Returns the venv python path, or None if skipped/failed soft.
+    """
+    project_root = project_root.resolve()
+    venv = project_root / ".venv"
+    py = venv / "bin" / "python"
+    req = project_root / ".pulse" / "requirements.txt"
+    try:
+        if not py.is_file():
+            print("pulse: creating project .venv …")
+            subprocess.check_call(
+                [sys.executable, "-m", "venv", str(venv)],
+                stdout=subprocess.DEVNULL,
+            )
+        if req.is_file():
+            print("pulse: installing .pulse/requirements.txt into .venv …")
+            subprocess.check_call(
+                [str(py), "-m", "pip", "install", "-q", "-U", "pip"],
+                stdout=subprocess.DEVNULL,
+            )
+            subprocess.check_call(
+                [str(py), "-m", "pip", "install", "-q", "-r", str(req)],
+            )
+        return py if py.is_file() else None
+    except (OSError, subprocess.CalledProcessError) as exc:
+        print(f"pulse: warning — could not prepare .venv ({exc})", file=sys.stderr)
+        print("  Install deps later: python3 -m venv .venv && .venv/bin/pip install -r .pulse/requirements.txt", file=sys.stderr)
+        return None
 
 
 def upgrade_project(target: Path) -> None:
@@ -613,6 +705,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Product code folders relative to project root (default: src)",
     )
     init.add_argument("--force", action="store_true")
+    init.add_argument(
+        "--no-venv",
+        action="store_true",
+        help="Do not create project .venv / install .pulse/requirements.txt",
+    )
 
     up = sub.add_parser(
         "update",
@@ -691,6 +788,7 @@ def main(argv: list[str] | None = None) -> int:
             tag_prefix=tag_prefix,
             code_roots=code_roots,
             force=bool(args.force),
+            with_venv=not bool(getattr(args, "no_venv", False)),
         )
         return 0
     return 2

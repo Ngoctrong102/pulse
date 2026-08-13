@@ -17,11 +17,17 @@ It does **not** rewrite your architecture, force a folder layout, or touch files
 
 ## Install / update / uninstall
 
-```bash
-pip install "git+https://github.com/Ngoctrong102/pulse.git"
+Recommended (isolated CLI — no project `.venv` needed):
 
-pulse update                 # pull latest from GitHub + sync .pulse/ in this project
-pulse uninstall              # remove the pulse package (project cards stay)
+```bash
+curl -fsSL https://raw.githubusercontent.com/Ngoctrong102/pulse/main/install.sh | bash
+```
+
+That creates `~/.local/share/pulse/venv`, installs pulse there, and puts a shim at `~/.local/bin/pulse` (add that dir to `PATH` if needed).
+
+```bash
+pulse update                 # pull latest + sync .pulse/ in this project
+pulse uninstall              # remove the CLI install (project cards stay)
 ```
 
 ## Quick start
@@ -29,9 +35,9 @@ pulse uninstall              # remove the pulse package (project cards stay)
 ```bash
 pulse init /path/to/your/project \
   --project MyApp --tag-prefix MYAPP --code-roots src
+# creates .pulse/ and a project .venv with PyYAML
 
 cd /path/to/your/project
-pip install -r .pulse/requirements.txt   # PyYAML for the vendored engine
 .pulse/bin/pulse generate
 .pulse/bin/pulse next --prompt
 ```
@@ -51,6 +57,7 @@ pulse github unlink
 
 ```
 your-project/
+  .venv/                  ← created by init (engine deps)
   .pulse/                 ← only pulse workspace
     features/             cards + _meta.yaml
     tools/                engine

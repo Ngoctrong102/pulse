@@ -30,6 +30,7 @@ def demo(tmp_path: Path):
             "--code-roots",
             "src,app",
             "--force",
+            "--no-venv",
         ],
         env=env,
         cwd=str(KIT),
