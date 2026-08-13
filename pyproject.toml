@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pulse"
+version = "0.4.0"
+description = "Project operating system — status, next actions, quality loops, plugins"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6.0"]
+
+[project.scripts]
+pulse = "pulse.__main__:main"
+
+[project.entry-points."pulse.plugins"]
+# Third parties: mypkg = "mypkg.plugin:PLUGIN"
+
+[tool.setuptools.packages.find]
+include = ["pulse*"]

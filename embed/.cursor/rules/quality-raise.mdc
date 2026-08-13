@@ -1,0 +1,17 @@
+---
+description: Log quality findings to pulse tech-debt backlog; defer fixes; blockers pause inline
+alwaysApply: true
+---
+
+# Pulse Quality Raise
+
+While touching code/docs: **do not leave quality issues silent**.
+
+1. **Log** every non-blocker finding as a backlog card:  
+   `.pulse/bin/pulse new --type tech-debt|bug --id … --name … --severity … --where … --why …`  
+   (`--blocks <focus>` only if it stops Continue on current Focus).
+2. **Do not fix** large smells now — wait for user triage on the board.
+3. **Correctness / security / privacy blockers** → raise inline + pause (still log a card).
+4. Before ending a turn that edited/read code for its API: run the self-check in skill `quality-raise` and print a short `## Quality self-check` (even if all clean).
+
+Full rubric, Clean Code/SOLID tables, and check commands: `.cursor/skills/quality-raise/SKILL.md`.

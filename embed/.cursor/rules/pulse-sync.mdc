@@ -1,0 +1,44 @@
+---
+description: Sync .pulse/features cards after code OR product-docs changes; detect before done; explain/next for status; heal only intentionally
+alwaysApply: true
+---
+
+# Pulse Sync
+
+The Status Board reads **`.pulse/features/`** (one YAML card per feature / bug / tech-debt; `_meta.yaml` = project meta + `focus_id` + `code_roots`). Chat answers and raw product-doc edits do **not** update the board until a card is written + `generate`.
+
+pulse lives only under `.pulse/` — it does not require any product folder layout.
+
+**Prefer the CLI:**
+
+```bash
+.pulse/bin/pulse set --feature <id> --status partial --percent 40 --add-remaining "…"
+.pulse/bin/pulse new --id <id> --name "…" --type feature|bug|tech-debt
+.pulse/bin/pulse next --prompt
+.pulse/bin/pulse explain
+```
+
+## When you MUST sync a card
+
+| Change | Action |
+|---|---|
+| Product **code** under folders listed in `_meta.code_roots` | Patch matching card |
+| Product **docs** the team treats as SoT | Same — or `new --type feature` for net-new scope |
+| **Bug** / **tech-debt** found | `new --type bug` / `new --type tech-debt` |
+
+Then `.pulse/bin/pulse generate` and/or `drift`.
+
+## Clean-code scoreboard (optional)
+
+`.pulse/bin/pulse cleancode list|scan|fix|set --module <id>`
+
+## Done / mocks / heal
+
+- Chat “done” ≠ board done — update the card.
+- `status: done` forbids non-empty `mocks` or `remaining`.
+- Before claim done: `.pulse/bin/pulse mismatch detect`.
+- Heal only when the user asks.
+
+## Status questions
+
+User asks status / next → `explain` / `next` — do not invent remaining/mocks from memory.

@@ -1,0 +1,101 @@
+{
+  "name": "pulse-board",
+  "displayName": "Pulse",
+  "description": "Whole-project status board: Overview + Feature Detail with Explain and Next-action prompts",
+  "version": "0.2.0",
+  "publisher": "pulse",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onView:pulseStatus.features",
+    "onCommand:pulseStatus.openBoard",
+    "onCommand:pulseStatus.refresh",
+    "onCommand:pulseStatus.openRegistry",
+    "onCommand:pulseStatus.runDetect"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pulseStatus",
+          "title": "Pulse",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "pulseStatus": [
+        {
+          "id": "pulseStatus.features",
+          "name": "Features"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "pulseStatus.openBoard",
+        "title": "Pulse: Open Status Board",
+        "icon": "$(window)"
+      },
+      {
+        "command": "pulseStatus.refresh",
+        "title": "Pulse: Refresh Project Status",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "pulseStatus.openRegistry",
+        "title": "Pulse: Open status folder"
+      },
+      {
+        "command": "pulseStatus.runDetect",
+        "title": "Pulse: Run Mismatch Detect"
+      },
+      {
+        "command": "pulseStatus.setSort",
+        "title": "Pulse: Sort Status Board"
+      },
+      {
+        "command": "pulseStatus.setFilter",
+        "title": "Pulse: Filter Status Board"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "pulseStatus.openBoard",
+          "when": "view == pulseStatus.features",
+          "group": "navigation"
+        },
+        {
+          "command": "pulseStatus.refresh",
+          "when": "view == pulseStatus.features",
+          "group": "navigation"
+        },
+        {
+          "command": "pulseStatus.setFilter",
+          "when": "view == pulseStatus.features"
+        },
+        {
+          "command": "pulseStatus.setSort",
+          "when": "view == pulseStatus.features"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}
