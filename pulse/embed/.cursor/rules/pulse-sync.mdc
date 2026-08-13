@@ -18,6 +18,8 @@ pulse lives only under `.pulse/` — it does not require any product folder layo
 .pulse/bin/pulse explain
 ```
 
+Edit **cards** under `.pulse/features/` (and `.pulse/cleancode/`). Do **not** edit vendored `.pulse/tools/` — refresh the engine with `pulse upgrade` from the kit.
+
 ## When you MUST sync a card
 
 | Change | Action |

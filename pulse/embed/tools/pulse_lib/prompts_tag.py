@@ -46,29 +46,61 @@ def build_tag_prompt(data: dict[str, Any], feature_id: str) -> str:
     return "\n".join(lines)
 
 
-def build_untagged_cleanup_prompt(data: dict[str, Any]) -> str:
-    """Paste-ready prompt: whole-project review of untagged requirement tags."""
+def build_untagged_cleanup_prompt(data: dict[str, Any], *, all_project: bool = False) -> str:
+    """Paste-ready prompt: review untagged requirement tags.
+
+    Default scope: ``focus_id`` when set, else top mvp/partial features.
+    Pass ``all_project=True`` (CLI ``--all``) for a whole-repo pass.
+    """
     features = [f for f in (data.get("features") or []) if isinstance(f, dict)]
+    focus_id = data.get("focus_id")
+    roots = code_roots()
+    scope_note: str
+    ranked: list[dict[str, Any]]
+
+    if not all_project and focus_id:
+        focus = next((f for f in features if f.get("id") == focus_id), None)
+        ranked = [focus] if focus else []
+        scope_note = f"Scoped to focus `{focus_id}` (pass `--all` for whole project)."
+    elif not all_project:
+        ranked = sorted(
+            features,
+            key=lambda f: (
+                0 if f.get("mvp") else 1,
+                0 if f.get("status") in {"partial", "done"} else 1,
+                int(f.get("priority") or 99),
+                str(f.get("id") or ""),
+            ),
+        )[:8]
+        scope_note = (
+            "Scoped to top mvp/partial features (default). "
+            "Pass `--all` for a whole-project pass."
+        )
+    else:
+        ranked = sorted(
+            features,
+            key=lambda f: (
+                0 if f.get("mvp") else 1,
+                0 if f.get("status") in {"partial", "done"} else 1,
+                int(f.get("priority") or 99),
+                str(f.get("id") or ""),
+            ),
+        )
+        scope_note = "Whole-project pass (`--all`)."
+
     lines = [
         f"Review `{tag_marker()}` on {project_label()} — sparse; prioritize public anchors missing tags.",
         "",
-        "## Rules",
-        f"- `rg '{tag_marker()}' {' '.join(code_roots())}` — inventory; IDs must exist in docs.",
+        f"## Scope — {scope_note}",
+        f"- Prefer `rg '{tag_marker()}' {' '.join(roots)}` limited to evidence paths below.",
         "- Max ~3 IDs/anchor; skip test/generated/vendor. No spam. No auto-heal.",
         "- Large smells → quality-raise + approval before a big cleanup.",
         "",
-        "## Scan priority (mvp / partial)",
+        "## Features in scope",
     ]
-    ranked = sorted(
-        features,
-        key=lambda f: (
-            0 if f.get("mvp") else 1,
-            0 if f.get("status") in {"partial", "done"} else 1,
-            int(f.get("priority") or 99),
-            str(f.get("id") or ""),
-        ),
-    )
-    for f in ranked[:12]:
+    if not ranked:
+        lines.append("_No features in scope — set focus or pass `--all`._")
+    for f in ranked:
         ev = f.get("evidence") or {}
         paths = ev.get("paths_any") if isinstance(ev, dict) else []
         docs = f.get("docs") or {}

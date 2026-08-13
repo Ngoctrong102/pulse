@@ -42,35 +42,35 @@ Chuẩn bị dọn theo nhóm. Không đụng containment / SoT cards trừ khi 
 | Target | ~LOC hôm nay | Cleanup |
 |---|---|---|
 | `pulse_lib/next_actions.py` | shim ~57 | [x] Tách `prompt_common` / `prompts_explain` / `prompts_next` / `prompts_tag` |
-| `pulse_lib/cleancode.py` | ~600 | [x] prompts → `cleancode_prompts.py`; [ ] store/metrics/render tiếp |
-| `pulse_lib/__init__.py` | 622 | Registry load/save/validate vs `views_board.py` / id-catalog render |
+| `pulse_lib/cleancode.py` | ~600 | [x] prompts → `cleancode_prompts.py`; [x] store/metrics/render |
+| `pulse_lib/__init__.py` | ~400 | Registry load/save/validate; views → `views_board.py` |
 | `pulse_lib/next_ranking.py` | 507 | Giữ nếu ổn; chặn không nhồi thêm prompt vào đây |
 | `pulse_lib/docs_drift.py` | 490 | Tách `analyze` vs `render_md` / `build_prompt`; giữ truncate cứng |
 | `pulse-cli/__main__.py` | 374 | Cân nhắc tách `cmd_set` / `cmd_new` nếu phình tiếp |
-| Extension `statusBoardPanel.ts` | 1113 | Tách render overview / detail / backlog / cleancode (kit only; không copy vào `.pulse/`) |
+| Extension `statusBoardPanel.ts` | ~680 | [x] Tách overview / detail / backlog / cleancode / filters / html utils |
 
 Checklist:
 
-- [ ] Split A-targets trong `embed/` rồi `pulse upgrade` / re-init để host nhận bản gọn
-- [ ] Rule: module agent hay đụng **≲300–400 LOC**; cấm thêm prompt dài vào file &gt;500
+- [x] Split A-targets trong `embed/` rồi `pulse upgrade` / re-init để host nhận bản gọn
+- [x] Rule: module agent hay đụng **≲300–400 LOC**; cấm thêm prompt dài vào file &gt;500
 
 ### B. Generated artifacts trong `.pulse/` (phình theo thời gian project)
 
 | File | Ai ghi | Rủi ro | Cleanup chuẩn bị |
 |---|---|---|---|
 | `mismatch-report.json` (+ `.md` cạnh đó) | `mismatch detect` | Full findings dump mỗi lần chạy | [x] Cap findings trong file on-disk; summary + `truncated: true`; chi tiết chỉ `--verbose` / stdout |
-| `docs-drift-report.json` | `drift` / generate hook | JSON full report; MD đã slice `[:60]`/`[:40]` nhưng JSON có thể vẫn dày | [x] Đồng bộ truncate JSON với MD; [ ] optional `drift --summary-only` |
-| `DRIFT.md` | drift hook | Dài khi nhiều gap/orphan; vẫn paste vào prompt | [x] Prompt chỉ nhúng summary counts; [ ] Top-N per section + counts (MD) |
+| `docs-drift-report.json` | `drift` / generate hook | JSON full report; MD đã slice `[:60]`/`[:40]` nhưng JSON có thể vẫn dày | [x] Đồng bộ truncate JSON với MD; [x] MD Top-N (optional `--summary-only` deferred) |
+| `DRIFT.md` | drift hook | Dài khi nhiều gap/orphan; vẫn paste vào prompt | [x] Prompt chỉ nhúng summary counts; [x] Top-N per section + counts (MD) |
 | `BOARD.md` | `generate` | Linear theo số card; paste cả board = nặng | [ ] Board compact mode / lane sections; [ ] prompts dùng `next --json` thay vì full BOARD |
 | `id-index.md` | `generate` | Linear theo mọi FR/NFR trong `docs/` | [ ] Generate on-demand hoặc cap; không nhét vào agent prompt mặc định |
-| `tech-debt.md` | `generate` | Linear backlog | [ ] Open-only view; done cards rút gọn hoặc bỏ khỏi view |
-| `clean-code.md` | cleancode hook | Linear theo module | [ ] OK nếu ít module; [ ] stale/dirty-first ordering |
+| `tech-debt.md` | `generate` | Linear backlog | [x] Open-first; done cards collapsed |
+| `clean-code.md` | cleancode hook | Linear theo module | [x] stale/dirty-first ordering |
 | `implementation-phases.md` | patch STATUS block | File host có thể dài ngoài block | [ ] Chỉ patch block; không khuyến khích paste cả file |
 
 Checklist:
 
-- [ ] Một policy “derived files are summaries”; raw dump chỉ khi flag debug
-- [ ] Document: agent/prompt **không** đọc full `*-report.json` trừ khi đang heal/detect có chủ đích
+- [x] Một policy “derived files are summaries”; raw dump chỉ khi flag debug
+- [x] Document: agent/prompt **không** đọc full `*-report.json` trừ khi đang heal/detect có chủ đích
 - [ ] (Optional) `.pulse/.gitignore` suggestions cho JSON report cục bộ nếu team không muốn commit bản đầy đủ — **không** auto-edit `.gitignore` (vision)
 
 ### C. Cards / data SoT (thường ổn — vẫn liệt kê để theo dõi)
@@ -86,9 +86,9 @@ Checklist:
 
 | Hiện tượng | Cleanup |
 |---|---|
-| Prompt builders nhúng quá nhiều context (speckit, full card, full mismatch) | [ ] Prompt slim: counts + top findings + paths; chi tiết `rg`/đọc file theo nhu cầu |
-| `next --json` vẫn có legacy `next` + `queue`/`continue` | [ ] Một payload; bỏ field trùng (P1 ranking story) |
-| Agent sửa nhầm `.pulse/tools/` | [ ] Skill/rule: chỉ sửa `features/`, `cleancode/`, plugins host — không đụng `tools/` |
+| Prompt builders nhúng quá nhiều context (speckit, full card, full mismatch) | [x] Prompt slim: counts + top findings + paths; chi tiết `rg`/đọc file theo nhu cầu |
+| `next --json` vẫn có legacy `next` + `queue`/`continue` | [x] Một payload; bỏ field trùng (P1 ranking story) |
+| Agent sửa nhầm `.pulse/tools/` | [x] Skill/rule: chỉ sửa `features/`, `cleancode/`, plugins host — không đụng `tools/` |
 
 ### E. Thứ **không** đưa vào cleanup phình
 
@@ -102,17 +102,17 @@ Checklist:
 
 - [x] Preserve full `_meta.yaml` on save (`tag_prefix`, `code_roots`, `plugins`, `speckit`, …) — verify intent first
 - [x] Extension `registry.ts`: align `featuresDir` / `cleancodeDir` with `.pulse/…` (or dual-discover); watchers already use `.pulse`
-- [ ] Package `embed/` so `pip install` + `init` works (or document source-only)
+- [x] Package `embed/` so `pip install` + `init` works (or document source-only)
 - [x] Regression tests: meta round-trip after `set`/`new`; extension path smoke if applicable
 
 ## P1 — maintainability
 
-- [ ] Formal card/meta schema
-- [ ] `pulse upgrade` (or version check) for vendored `.pulse/tools`
-- [ ] Honest plugin disable for focus/tags **or** document as markers only
-- [ ] Fold heal into `pulse_lib` (less sidecar)
-- [ ] One ranking story (legacy `next` vs `queue`/`continue`)
-- [ ] Cleancode areas not hardcoded to `ios`/`api`
+- [x] Formal card/meta schema
+- [x] `pulse upgrade` (or version check) for vendored `.pulse/tools`
+- [x] Honest plugin disable for focus/tags **or** document as markers only
+- [x] Fold heal into `pulse_lib` (less sidecar)
+- [x] One ranking story (legacy `next` vs `queue`/`continue`)
+- [x] Cleancode areas not hardcoded to `ios`/`api`
 
 ## P2 — file size / agent efficiency
 
@@ -125,9 +125,9 @@ Chi tiết + checklist dọn: **Cleanup backlog** (mục A–D) phía trên. Tó
 ## P2 — polish (from earlier review)
 
 - [x] English-first prompts + locale
-- [ ] CI: pytest + extension compile
-- [ ] Real hooks.json merge / unlink
-- [ ] Use or remove `config.json` duplicate of meta
+- [x] CI: pytest + extension compile
+- [x] Real hooks.json merge / unlink
+- [x] Use or remove `config.json` duplicate of meta
 
 ---
 
@@ -149,8 +149,8 @@ Flow hiện tại **đủ tốt về JTBD**; lỗ hổng chính là prompt/rules
 | Cap generated reports | `.pulse/` sạch | Debug sâu cần `--verbose` |
 | Giữ prompt dày như hiện tại | Hành vi ổn định hơn | Mỗi Continue đắt token hơn cần thiết |
 
-- [ ] Cap or summarize drift/mismatch reports written into `.pulse/` (avoid unbounded JSON/MD for agent paste)
-- [ ] Document: agents should edit **cards** under `.pulse/features/`, not vendored `.pulse/tools/` unless upgrading the kit
+- [x] Cap or summarize drift/mismatch reports written into `.pulse/` (avoid unbounded JSON/MD for agent paste)
+- [x] Document: agents should edit **cards** under `.pulse/features/`, not vendored `.pulse/tools/` unless upgrading the kit
 
 ### Đáng làm — ROI cao, trade-off thấp
 
@@ -166,14 +166,14 @@ Flow hiện tại **đủ tốt về JTBD**; lỗ hổng chính là prompt/rules
   - On-disk summary + `truncated`; full chỉ `--verbose` / stdout
   - Prompt **không** bảo “đọc full `docs-drift-report.json`” mặc định — chỉ counts + top findings
 - [x] **Spec Kit blocks**: khi `speckit: false`, prompt không còn jargon / playbook Spec Kit (đã có hướng; audit sót)
-- [ ] **Tách file engine phình** (Cleanup A) — giúp agent sửa đúng chỗ; gần như không đổi UX user
+- [x] **Tách file engine phình** (Cleanup A) — giúp agent sửa đúng chỗ; gần như không đổi UX user
 
 ### Cân nhắc / làm sau
 
-- [ ] `tag --untagged-cleanup` mặc định scoped theo `focus_id` / subset `code_roots` (flag `--all` cho toàn project)
-- [ ] Cleancode scan/fix: nhắc giới hạn glob + file budget; tránh “đọc hết module” nếu quá lớn
+- [x] `tag --untagged-cleanup` mặc định scoped theo `focus_id` / top features (flag `--all` cho toàn project)
+- [x] Cleancode scan/fix: nhắc giới hạn glob + file budget; tránh “đọc hết module” nếu quá lớn
 - [ ] `explain` project: giữ top incomplete nhỏ; findings chỉ critical/warning top-N (đã có một phần)
-- [ ] Document: ưu tiên `next --json` / Continuue prompt thay vì paste cả `BOARD.md` vào chat
+- [x] Document: ưu tiên `next --json` / Continue prompt thay vì paste cả `BOARD.md` vào chat
 
 ### Không làm sớm (anti-goals token)
 

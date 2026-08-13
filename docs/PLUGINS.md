@@ -32,4 +32,12 @@ plugins:
   disabled: []
 ```
 
+**Honesty notes**
+
+| Plugin | Disable means |
+|---|---|
+| `focus` | Continue/queue ignore `focus_id` (queue-only promote) |
+| `tags` | Drift skips tag-gap / orphan-tag / evidence-untagged sections |
+| others | Commands / generate hooks for that module are not registered |
+
 Pip entry points: group `pulse.plugins`.

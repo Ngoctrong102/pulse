@@ -1,4 +1,8 @@
-"""Requirement-tag audit helpers (used by drift; exposed as toggleable module)."""
+"""Requirement-tag audit helpers (used by drift; exposed as toggleable module).
+
+When listed under ``plugins.disabled``, ``analyze_docs_drift`` skips tag gaps,
+orphan code tags, and evidence-untagged audits.
+"""
 
 from __future__ import annotations
 
@@ -14,8 +18,6 @@ class TagsPlugin:
         def _noop(_registry: dict[str, Any]) -> None:
             return None
 
-        # Tag audit is invoked from docs_drift; this plugin gates whether
-        # hosts consider tagging part of their pulse surface.
         app.on_generate(_noop, plugin=self.name)
 
 

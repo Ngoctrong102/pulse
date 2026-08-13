@@ -47,6 +47,7 @@ export type NextPayload = {
     why?: string | null;
     name?: string | null;
     multi?: boolean;
+    finding_count?: number;
     sub_actions?: Array<{ key?: string; title?: string; kind?: string }>;
     severity?: string | null;
   };
@@ -61,27 +62,12 @@ export type NextPayload = {
     severity?: string | null;
     status?: string | null;
     percent?: number | null;
+    multi?: boolean;
+    finding_count?: number;
+    sub_actions?: Array<{ key?: string; title?: string; kind?: string }>;
   }>;
   fix_urgent_count?: number;
   blocker_banner?: { id?: string; name?: string; message?: string } | null;
-  next: Array<{
-    id: string;
-    name?: string;
-    status?: string;
-    percent?: number;
-    priority?: number;
-    roi?: number;
-    mvp?: boolean;
-    action?: string;
-    why?: string;
-    remaining?: string[];
-    mocks?: string[];
-    docs?: Record<string, string[]>;
-    specs?: string[];
-    finding_count?: number;
-    multi?: boolean;
-    sub_actions?: Array<{ key?: string; title?: string; kind?: string }>;
-  }>;
 };
 
 function runStatus(folder: string, args: string[]): Promise<string> {

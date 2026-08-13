@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 
 from pulse_lib import StatusError
-from pulse_lib.paths import BIN_PULSE, MISMATCH_REPORT, PULSE_HOME, PROJECT_ROOT, REPO_ROOT
+from pulse_lib.paths import MISMATCH_REPORT
 from pulse_lib.mismatch import detect, write_report
+from pulse_lib.mismatch_heal import run_heal
 from pulse_lib.plugin import PulseApp
 
 
@@ -64,13 +64,14 @@ class MismatchPlugin:
                 return 1 if report["summary"]["critical"] else 0
 
             if action == "heal":
-                py = PULSE_HOME / "tools" / "pulse-mismatch-heal" / "__main__.py"
-                cmd_l = [sys.executable, str(py), "--from-report", str(args.from_report)]
-                if args.apply:
-                    cmd_l.append("--apply")
-                else:
-                    cmd_l.append("--dry-run")
-                return int(subprocess.call(cmd_l, cwd=str(PROJECT_ROOT)))
+                apply = bool(args.apply)
+                dry_run = bool(args.dry_run) or not apply
+                return run_heal(
+                    from_report=Path(args.from_report),
+                    apply=apply,
+                    dry_run=dry_run,
+                    registry=None,
+                )
 
             return 2
 

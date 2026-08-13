@@ -1,7 +1,7 @@
 """Focus / Continue / lane queue — surfaces via ``next --json`` (prompts plugin).
 
-This plugin exists so hosts can disable focus semantics independently later,
-and so ``plugins list`` shows Focus as a first-class module.
+When this plugin is listed under ``plugins.disabled``, ranking skips focus
+semantics (``resolve_continue`` / payload ``focus``) and promotes from the queue only.
 """
 
 from __future__ import annotations
@@ -15,8 +15,6 @@ class FocusPlugin:
     name = "focus"
 
     def setup(self, app: PulseApp) -> None:
-        # Ranking lives in next_ranking; prompts plugin calls it.
-        # Hook keeps module discoverable / toggleable.
         def _noop(_registry: dict[str, Any]) -> None:
             return None
 

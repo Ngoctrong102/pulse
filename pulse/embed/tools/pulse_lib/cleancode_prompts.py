@@ -31,7 +31,10 @@ def build_scan_prompt(mod: dict[str, Any]) -> str:
 Scope (read-only within these globs — do NOT edit code):
 {_globs_block(mod)}
 
-Score against the quality-raise rubric (read each file, find smells):
+Budget: sample the module — prefer entrypoints / public APIs / recently changed files.
+If a folder is huge, do **not** read every file; note skipped paths and still score.
+
+Score against the quality-raise rubric:
 {_rubric_block()}
 
 For EACH smell found, log a tech-debt card:
@@ -58,7 +61,9 @@ Scope (edit only within these globs — do not expand outside):
 
 {findings_line}
 
-Rubric to satisfy (fix every violation):
+Budget: fix the worst smells first; if the module is large, stay within a small file set this turn.
+
+Rubric to satisfy (fix every violation you touch):
 {_rubric_block()}
 
 Requirements:

@@ -1,0 +1,5 @@
+recursive-include pulse/embed *
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+recursive-exclude pulse/embed **/__pycache__/*

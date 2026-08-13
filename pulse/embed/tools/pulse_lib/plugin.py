@@ -113,6 +113,14 @@ def load_plugin_policy(root: Path) -> dict[str, Any]:
     return plugins if isinstance(plugins, dict) else {}
 
 
+def is_plugin_enabled(name: str, root: Path | None = None) -> bool:
+    """Whether ``name`` would load under current ``_meta.yaml`` plugin policy."""
+    from pulse_lib.paths import PROJECT_ROOT
+
+    policy = load_plugin_policy(root or PROJECT_ROOT)
+    return _is_allowed(name, policy)
+
+
 def _is_allowed(name: str, policy: dict[str, Any]) -> bool:
     disabled = policy.get("disabled") or []
     if isinstance(disabled, list) and name in disabled:

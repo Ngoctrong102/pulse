@@ -16,5 +16,14 @@ pulse = "pulse.__main__:main"
 [project.entry-points."pulse.plugins"]
 # Third parties: mypkg = "mypkg.plugin:PLUGIN"
 
-[tool.setuptools.packages.find]
-include = ["pulse*"]
+[tool.setuptools]
+packages = ["pulse"]
+
+[tool.setuptools.package-data]
+pulse = [
+  "embed/tools/**/*",
+  "embed/.cursor/**/*",
+]
+
+[tool.setuptools.exclude-package-data]
+pulse = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]

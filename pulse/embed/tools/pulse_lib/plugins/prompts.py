@@ -73,23 +73,21 @@ class PromptsPlugin:
             if args.json:
                 print(json.dumps(payload, ensure_ascii=False, indent=2))
                 return 0
-            items = payload.get("next") or []
+            items = payload.get("queue") or []
             cont = payload.get("continue") or {}
             focus = payload.get("focus")
             if focus and focus.get("valid"):
                 print(f"Focus: {focus.get('id')} ({focus.get('status')} {focus.get('percent')}%)")
             print(f"Continue [{cont.get('kind')}]: {cont.get('id')} — {cont.get('action')}")
-            print(f"Lane={lane} queue={len(payload.get('queue') or [])}")
+            print(f"Lane={lane} queue={len(items)}")
             if not items:
-                print("No ship queue items (all done or empty).")
+                print("Queue empty.")
                 return 0
-            print(f"{'#':<3} {'ID':<28} {'P':>2} {'ROI':>3} {'%':>3} Multi Action")
+            print(f"{'#':<3} {'Lane':<7} {'ID':<28} {'P':>2} Action")
             for i, item in enumerate(items, 1):
-                multi = "Y" if item.get("multi") else "-"
                 print(
-                    f"{i:<3} {item['id']:<28} {item.get('priority', ''):>2} "
-                    f"{item.get('roi', ''):>3} {item.get('percent', ''):>3} {multi:<5} "
-                    f"{item.get('action', '')[:50]}"
+                    f"{i:<3} {str(item.get('lane') or '-'):<7} {str(item.get('id') or ''):<28} "
+                    f"{item.get('priority', '')!s:>2} {str(item.get('action') or '')[:50]}"
                 )
                 print(f"    why: {item.get('why')}")
             return 0
@@ -97,12 +95,21 @@ class PromptsPlugin:
         def cfg_tag(p: argparse.ArgumentParser) -> None:
             p.add_argument("--feature")
             p.add_argument("--untagged-cleanup", action="store_true")
+            p.add_argument(
+                "--all",
+                action="store_true",
+                help="With --untagged-cleanup: whole-project (default is focus / top features)",
+            )
             p.add_argument("--path")
 
         def cmd_tag(args: argparse.Namespace) -> int:
             data = load_registry(Path(args.path) if getattr(args, "path", None) else None)
             if args.untagged_cleanup:
-                print(build_untagged_cleanup_prompt(data))
+                print(
+                    build_untagged_cleanup_prompt(
+                        data, all_project=bool(getattr(args, "all", False))
+                    )
+                )
                 return 0
             if not args.feature:
                 print(

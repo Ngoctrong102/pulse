@@ -1,32 +1,22 @@
-#!/usr/bin/env python3
-"""Toolkit B — heal features.yaml from a detect report only."""
+"""Safe mismatch heal — downgrade false-done cards from a detect report."""
 
 from __future__ import annotations
 
-import argparse
-import json
-import sys
+from datetime import date
 from pathlib import Path
+from typing import Any
 
-import os
-_pulse_home = Path(__file__).resolve().parents[2]
-_project = _pulse_home.parent if _pulse_home.name == ".pulse" else Path(os.environ.get("PULSE_ROOT") or _pulse_home).resolve()
-if _pulse_home.name != ".pulse":
-    _pulse_home = _project / ".pulse"
-os.environ["PULSE_HOME"] = str(_pulse_home)
-os.environ["PULSE_ROOT"] = str(_project)
-sys.path.insert(0, str(_pulse_home / "tools"))
-ROOT = _project
-
-from pulse_lib import (  # noqa: E402
+from pulse_lib import (
+    DEFAULT_REGISTRY,
     StatusError,
     generate_views,
     load_registry,
     save_registry,
 )
+from pulse_lib.paths import PROJECT_ROOT
 
 
-def plan_patches(report: dict, data: dict) -> list[tuple[str, str]]:
+def plan_patches(report: dict[str, Any], data: dict[str, Any]) -> list[tuple[str, str]]:
     """Return list of (feature_id, description) planned edits."""
     planned: list[tuple[str, str]] = []
     by_id = {f.get("id"): f for f in data.get("features") or [] if isinstance(f, dict)}
@@ -43,7 +33,7 @@ def plan_patches(report: dict, data: dict) -> list[tuple[str, str]]:
     return planned
 
 
-def apply_patches(report: dict, data: dict) -> int:
+def apply_patches(report: dict[str, Any], data: dict[str, Any]) -> int:
     by_id = {f.get("id"): f for f in data.get("features") or [] if isinstance(f, dict)}
     changed = 0
     for finding in report.get("findings") or []:
@@ -68,27 +58,29 @@ def apply_patches(report: dict, data: dict) -> int:
     return changed
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(prog="pulse-mismatch-heal")
-    parser.add_argument("--from-report", type=Path, required=True)
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--dry-run", action="store_true")
-    group.add_argument("--apply", action="store_true")
-    parser.add_argument("--registry", type=Path, default=None)
-    args = parser.parse_args()
+def run_heal(
+    *,
+    from_report: Path,
+    apply: bool,
+    dry_run: bool,
+    registry: Path | None = None,
+) -> int:
+    """CLI-facing heal. Returns process exit code."""
+    import json
+    import sys
 
-    if not args.from_report.is_file():
-        print(f"Report not found: {args.from_report}", file=sys.stderr)
+    if not from_report.is_file():
+        print(f"Report not found: {from_report}", file=sys.stderr)
         return 2
-    report = json.loads(args.from_report.read_text(encoding="utf-8"))
+    report = json.loads(from_report.read_text(encoding="utf-8"))
     try:
-        data = load_registry(args.registry)
+        data = load_registry(registry)
     except StatusError as exc:
         print(str(exc), file=sys.stderr)
         return 2
 
     planned = plan_patches(report, data)
-    if args.dry_run:
+    if dry_run or not apply:
         if not planned:
             print("No safe critical patches to apply.")
             return 0
@@ -99,16 +91,14 @@ def main() -> int:
 
     changed = apply_patches(report, data)
     if changed:
-        data["updated"] = __import__("datetime").date.today().isoformat()
-        save_registry(data, args.registry)
-        # Only regenerate committed views when healing the live registry
-        from pulse_lib import DEFAULT_REGISTRY
-
-        if args.registry is None or Path(args.registry).resolve() == DEFAULT_REGISTRY.resolve():
+        data["updated"] = date.today().isoformat()
+        save_registry(data, registry)
+        if registry is None or Path(registry).resolve() == DEFAULT_REGISTRY.resolve():
             generate_views(data)
             try:
                 from pulse_lib.plugin import PulseApp, load_plugins, run_generate_hooks
-                app = PulseApp(root=ROOT)
+
+                app = PulseApp(root=PROJECT_ROOT)
                 load_plugins(app)
                 run_generate_hooks(app, data)
             except Exception as exc:  # noqa: BLE001
@@ -117,7 +107,3 @@ def main() -> int:
     else:
         print("Nothing to apply.")
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

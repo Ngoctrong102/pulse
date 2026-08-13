@@ -168,6 +168,9 @@ def _ship_candidates(
                 "severity": None,
                 "status": feat.get("status"),
                 "percent": feat.get("percent"),
+                "multi": step.get("multi"),
+                "sub_actions": step.get("sub_actions") or [],
+                "finding_count": step.get("finding_count") or 0,
                 "_severity_rank": sev_rank,
             }
         )
@@ -322,10 +325,15 @@ def resolve_continue(
     mismatch: dict[str, Any] | None = None,
     lane: str = "all",
     queue_limit: int = 7,
+    use_focus: bool | None = None,
 ) -> dict[str, Any]:
     """Return ContinueTarget dict (kind focus_step | unblock | promote_queue)."""
     mismatch = mismatch if mismatch is not None else load_mismatch_summary()
-    focus = focus_snapshot(data)
+    if use_focus is None:
+        from pulse_lib.plugin import is_plugin_enabled
+
+        use_focus = is_plugin_enabled("focus")
+    focus = focus_snapshot(data) if use_focus else None
     queue = rank_queue(data, lane=lane, limit=queue_limit, mismatch=mismatch)
 
     if focus and focus.get("valid"):
@@ -483,18 +491,19 @@ def build_next_payload(
     mvp_only: bool = False,
 ) -> dict[str, Any]:
     from pulse_lib.next_actions import health_summary
+    from pulse_lib.plugin import is_plugin_enabled
 
+    del mvp_only  # ranking uses unified queue; flag kept for CLI back-compat
     mismatch = mismatch if mismatch is not None else load_mismatch_summary()
     lane = (lane or "all").strip().lower()
     if lane not in LANES:
         lane = "all"
-    focus = focus_snapshot(data)
-    cont = resolve_continue(data, mismatch=mismatch, lane=lane, queue_limit=limit)
-    queue = rank_queue(data, lane=lane, limit=limit, mismatch=mismatch)
-    # Legacy ``next``: ship-ranked incomplete features (no info boost) for older clients.
-    legacy = rank_next_actions(
-        data, limit=limit, mismatch=mismatch, mvp_only=mvp_only, boost_findings=False
+    use_focus = is_plugin_enabled("focus")
+    focus = focus_snapshot(data) if use_focus else None
+    cont = resolve_continue(
+        data, mismatch=mismatch, lane=lane, queue_limit=limit, use_focus=use_focus
     )
+    queue = rank_queue(data, lane=lane, limit=limit, mismatch=mismatch)
     return {
         "health": health_summary(data, mismatch),
         "focus": focus,
@@ -503,5 +512,4 @@ def build_next_payload(
         "queue": queue,
         "fix_urgent_count": count_open_fix_urgent(data),
         "blocker_banner": soft_blocker_banner(data),
-        "next": legacy,
     }

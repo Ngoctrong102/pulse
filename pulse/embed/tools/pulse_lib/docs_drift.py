@@ -235,37 +235,44 @@ def analyze_docs_drift(data: dict[str, Any] | None = None) -> dict[str, Any]:
                 )
             )
 
-    tag_hits = scan_code_tags()
     tag_gaps: list[dict[str, Any]] = []
-    for feat in registry.get("features") or []:
-        if not isinstance(feat, dict):
-            continue
-        if feat.get("status") == "todo":
-            continue
-        fid = str(feat.get("id") or "")
-        covered = feature_covers.get(fid) or set()
-        for req_id in sorted(x for x in covered if x.startswith(("FR-", "NFR-"))):
-            paths = tag_hits.get(req_id) or []
-            if not paths:
-                tag_gaps.append({"feature_id": fid, "req_id": req_id, "tag_hits": 0})
-                findings.append(
-                    Finding(
-                        "info",
-                        "req_id_without_tag",
-                        f"{req_id} covered by {fid} on board but no {tag_marker()} tag in code roots "
-                        "(unimplemented, unlabeled, or docs-only)",
-                        feature_id=fid,
-                        req_id=req_id,
+    orphan_findings: list[Finding] = []
+    evidence_tag_findings: list[Finding] = []
+    evidence_untagged: list[dict[str, Any]] = []
+
+    from pulse_lib.plugin import is_plugin_enabled
+
+    if is_plugin_enabled("tags"):
+        tag_hits = scan_code_tags()
+        for feat in registry.get("features") or []:
+            if not isinstance(feat, dict):
+                continue
+            if feat.get("status") == "todo":
+                continue
+            fid = str(feat.get("id") or "")
+            covered = feature_covers.get(fid) or set()
+            for req_id in sorted(x for x in covered if x.startswith(("FR-", "NFR-"))):
+                paths = tag_hits.get(req_id) or []
+                if not paths:
+                    tag_gaps.append({"feature_id": fid, "req_id": req_id, "tag_hits": 0})
+                    findings.append(
+                        Finding(
+                            "info",
+                            "req_id_without_tag",
+                            f"{req_id} covered by {fid} on board but no {tag_marker()} tag in code roots "
+                            "(unimplemented, unlabeled, or docs-only)",
+                            feature_id=fid,
+                            req_id=req_id,
+                        )
                     )
-                )
 
-    orphan_findings = audit_orphan_code_tags(catalog)
-    findings.extend(orphan_findings)
+        orphan_findings = audit_orphan_code_tags(catalog)
+        findings.extend(orphan_findings)
 
-    evidence_tag_findings, evidence_untagged = audit_evidence_paths_missing_tags(
-        list(registry.get("features") or [])
-    )
-    findings.extend(evidence_tag_findings)
+        evidence_tag_findings, evidence_untagged = audit_evidence_paths_missing_tags(
+            list(registry.get("features") or [])
+        )
+        findings.extend(evidence_tag_findings)
 
     counts = {
         "critical": sum(1 for f in findings if f.severity == "critical"),
@@ -330,13 +337,22 @@ def render_drift_md(report: dict[str, Any]) -> str:
         "| Feature | Status | % | Rem | Mocks |",
         "|---|---|---:|---:|---:|",
     ]
-    for row in report.get("open_work") or []:
-        if row.get("status") == "done" and not row.get("remaining_count") and not row.get("mocks_count"):
-            continue
+    open_rows = [
+        row
+        for row in (report.get("open_work") or [])
+        if not (
+            row.get("status") == "done"
+            and not row.get("remaining_count")
+            and not row.get("mocks_count")
+        )
+    ]
+    for row in open_rows[:25]:
         lines.append(
             f"| `{row.get('id')}` | {row.get('status')} | {row.get('percent')} | "
             f"{row.get('remaining_count')} | {row.get('mocks_count')} |"
         )
+    if len(open_rows) > 25:
+        lines.append(f"| … | +{len(open_rows) - 25} more open features | | | |")
     lines.extend(["", "## Spec Kit vs board (leftover after doc/spec change)", ""])
     debt = report.get("spec_debt") or []
     if not debt:
@@ -344,13 +360,15 @@ def render_drift_md(report: dict[str, Any]) -> str:
     else:
         lines.append("| Feature | Kind | Detail |")
         lines.append("|---|---|---|")
-        for d in debt:
+        for d in debt[:25]:
             detail = str(d.get("spec") or "")
             if d.get("remaining"):
                 detail += " · rem: " + "; ".join(d["remaining"][:3])
             if d.get("open_tasks"):
                 detail += f" · open_tasks={d['open_tasks']}"
             lines.append(f"| `{d.get('id')}` | {d.get('kind')} | {detail} |")
+        if len(debt) > 25:
+            lines.append(f"| … | +{len(debt) - 25} more | |")
 
     lines.extend(["", "## Docs IDs not mapped on board (sample)", ""])
     untracked = report.get("untracked_ids") or []
@@ -359,10 +377,10 @@ def render_drift_md(report: dict[str, Any]) -> str:
     else:
         lines.append("| ID | Doc |")
         lines.append("|---|---|")
-        for u in untracked[:40]:
+        for u in untracked[:25]:
             lines.append(f"| `{u.get('id')}` | {u.get('doc')} |")
-        if len(untracked) > 40:
-            lines.append(f"| … | +{len(untracked) - 40} more |")
+        if len(untracked) > 25:
+            lines.append(f"| … | +{len(untracked) - 25} more |")
 
     lines.extend(["", f"## Evidence paths missing / mismatched {tag_marker()} tags", ""])
     ev = report.get("evidence_untagged") or []
@@ -371,10 +389,12 @@ def render_drift_md(report: dict[str, Any]) -> str:
     else:
         lines.append("| Feature | Path | Kind |")
         lines.append("|---|---|---|")
-        for row in ev[:30]:
+        for row in ev[:20]:
             lines.append(
                 f"| `{row.get('feature_id')}` | `{row.get('path')}` | {row.get('kind')} |"
             )
+        if len(ev) > 20:
+            lines.append(f"| … | +{len(ev) - 20} more | |")
 
     lines.extend(["", "## Orphan code tags (sample)", ""])
     orphans = report.get("orphan_code_tags") or []
@@ -383,8 +403,10 @@ def render_drift_md(report: dict[str, Any]) -> str:
     else:
         lines.append("| ID | Message |")
         lines.append("|---|---|")
-        for o in orphans[:20]:
+        for o in orphans[:15]:
             lines.append(f"| `{o.get('req_id')}` | {o.get('message')} |")
+        if len(orphans) > 15:
+            lines.append(f"| … | +{len(orphans) - 15} more |")
 
     lines.extend(
         [
@@ -397,6 +419,9 @@ def render_drift_md(report: dict[str, Any]) -> str:
             "(or board **Docs/spec drift**) — raise cleanup via `quality-raise` before big deletes.",
             "4. Tag gaps / evidence untagged / orphans: `tag --feature`, `tag --untagged-cleanup`, "
             "or `.pulse/bin/pulse mismatch detect`.",
+            "",
+            "_DRIFT.md is a summary (top-N per section). Prefer counts + `next --prompt`; "
+            "read `docs-drift-report.json` only when debugging drift/heal._",
             "",
         ]
     )
