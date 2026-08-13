@@ -67,11 +67,10 @@ PULSE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT_ROOT="$(cd "$PULSE_HOME/.." && pwd)"
 export PULSE_HOME PROJECT_ROOT
 export PULSE_ROOT="$PROJECT_ROOT"
-# Never use the host project's .venv — that belongs to the product app.
+# Engine Python = pulse CLI install only — never the host project's .venv.
 PY=""
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
 for cand in \\
-  "${PULSE_HOME}/venv/bin/python" \\
   "${DATA}/pulse/venv/bin/python" \\
   "$HOME/.local/share/pulse/venv/bin/python"
 do
@@ -299,10 +298,10 @@ def init_project(
 
 
 def _engine_python(project_root: Path) -> Path:
-    """Interpreter for the vendored engine — never the host project's ``.venv``."""
+    """Interpreter for the vendored engine — the pulse CLI venv, never host ``.venv``."""
+    del project_root  # layout is global; kept for call-site clarity
     data = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share"))
     for cand in (
-        project_root / ".pulse" / "venv" / "bin" / "python",
         data / "pulse" / "venv" / "bin" / "python",
         Path.home() / ".local" / "share" / "pulse" / "venv" / "bin" / "python",
         Path(sys.executable),

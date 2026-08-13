@@ -169,6 +169,7 @@ def test_init_does_not_create_host_venv(tmp_path: Path):
     assert (tmp_path / ".pulse" / "bin" / "pulse").is_file()
     bin_text = (tmp_path / ".pulse" / "bin" / "pulse").read_text(encoding="utf-8")
     assert "PROJECT_ROOT}/.venv" not in bin_text
+    assert "PULSE_HOME}/venv" not in bin_text
     assert "pulse/venv/bin/python" in bin_text
 
 
