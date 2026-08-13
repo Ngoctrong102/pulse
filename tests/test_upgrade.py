@@ -25,7 +25,22 @@ def demo(tmp_path: Path):
 
 
 
-def test_embed_templates_ship_with_package():
+def test_pip_install_latest_busts_cache(monkeypatch):
+    from pulse import __main__ as m
+
+    calls: list[list[str]] = []
+
+    def fake_call(argv, *args, **kwargs):
+        calls.append(list(argv))
+        return 0
+
+    monkeypatch.setattr(m.subprocess, "call", fake_call)
+    m._pip_install_latest()
+    assert len(calls) == 1
+    cmd = calls[0]
+    assert "--force-reinstall" in cmd
+    assert "--no-cache-dir" in cmd
+    assert any(s.endswith("@main") for s in cmd if isinstance(s, str))
     from pulse.__main__ import EMBED_ROOT
 
     assert EMBED_ROOT.is_dir(), EMBED_ROOT

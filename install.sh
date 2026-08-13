@@ -149,12 +149,12 @@ if [[ ! -x "$VENV/bin/python" ]]; then
   exit 1
 fi
 
-log "  installing from $REPO …"
+log "  installing from $REPO @main …"
 if [[ -n "${UV_BIN:-}" && -x "$UV_BIN" ]]; then
-  "$UV_BIN" pip install --python "$VENV/bin/python" -U "git+${REPO}"
+  "$UV_BIN" pip install --python "$VENV/bin/python" --reinstall --no-cache "git+${REPO}@main"
 else
   "$VENV/bin/python" -m pip install -q -U pip
-  "$VENV/bin/python" -m pip install -q -U "git+${REPO}"
+  "$VENV/bin/python" -m pip install -q --upgrade --force-reinstall --no-cache-dir "git+${REPO}@main"
 fi
 
 cat >"$PREFIX/install-meta.json" <<EOF

@@ -337,7 +337,9 @@ def _run_project_generate(project_root: Path) -> None:
 
 
 GIT_REPO = "https://github.com/Ngoctrong102/pulse.git"
-PIP_SPEC = f"git+{GIT_REPO}"
+# Pin @main + force-reinstall: package version often stays flat, so plain `-U` is a no-op
+# and pip's VCS cache can serve a stale clone.
+PIP_SPEC = f"git+{GIT_REPO}@main"
 # Layout created by install.sh (curl | bash)
 _DEFAULT_CURL_PREFIX = Path(
     os.environ.get("PULSE_HOME")
@@ -369,9 +371,18 @@ def _curl_install_meta() -> dict[str, Any] | None:
 
 
 def _pip_install_latest() -> None:
-    print(f"pulse upgrade: installing latest from {GIT_REPO} …")
+    print(f"pulse upgrade: installing latest from {GIT_REPO}@main …")
     rc = subprocess.call(
-        [sys.executable, "-m", "pip", "install", "-U", PIP_SPEC],
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            "--force-reinstall",
+            "--no-cache-dir",
+            PIP_SPEC,
+        ],
     )
     if rc != 0:
         _die("pip install failed — fix network/permissions, then retry `pulse upgrade`")
