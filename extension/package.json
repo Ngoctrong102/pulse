@@ -2,7 +2,7 @@
   "name": "pulse-board",
   "displayName": "Pulse",
   "description": "Whole-project status board: Overview + Feature Detail with Explain and Next-action prompts",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "pulse",
   "engines": {
     "vscode": "^1.85.0"

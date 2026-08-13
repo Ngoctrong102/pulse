@@ -120,10 +120,79 @@ export class StatusTreeProvider implements vscode.TreeDataProvider<vscode.TreeIt
 
 export function activate(context: vscode.ExtensionContext): void {
   const folder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  let provider: StatusTreeProvider | undefined;
+
+  const refreshAll = () => {
+    provider?.refresh();
+    void StatusBoardPanel.current?.refresh();
+  };
+
+  const needFolder = (): string | undefined => {
+    if (!folder) {
+      void vscode.window.showErrorMessage("Pulse: open a folder/workspace first.");
+      return undefined;
+    }
+    return folder;
+  };
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("pulseStatus.openBoard", (featureId?: string) => {
+      const root = needFolder();
+      if (!root) return;
+      StatusBoardPanel.createOrShow(context, root, featureId);
+    }),
+    vscode.commands.registerCommand("pulseStatus.refresh", () => {
+      if (!needFolder()) return;
+      refreshAll();
+    }),
+    vscode.commands.registerCommand("pulseStatus.openRegistry", async () => {
+      const root = needFolder();
+      if (!root) return;
+      await vscode.commands.executeCommand(
+        "revealInExplorer",
+        vscode.Uri.file(featuresDir(root))
+      );
+    }),
+    vscode.commands.registerCommand("pulseStatus.runDetect", () => {
+      const root = needFolder();
+      if (!root) return;
+      runDetectInTerminal(root);
+    }),
+    vscode.commands.registerCommand("pulseStatus.setSort", async () => {
+      if (!provider) {
+        void vscode.window.showErrorMessage("Pulse: open a folder/workspace first.");
+        return;
+      }
+      const pick = await vscode.window.showQuickPick(
+        ["priority", "roi", "percent", "phase"],
+        { title: "Sort features by" }
+      );
+      if (pick) {
+        provider.sortKey = pick as SortKey;
+        provider.refresh();
+      }
+    }),
+    vscode.commands.registerCommand("pulseStatus.setFilter", async () => {
+      if (!provider) {
+        void vscode.window.showErrorMessage("Pulse: open a folder/workspace first.");
+        return;
+      }
+      const pick = await vscode.window.showQuickPick(
+        ["all", "partial", "todo", "done", "mvp"],
+        { title: "Filter features" }
+      );
+      if (pick) {
+        provider.filter = pick as FilterMode;
+        provider.refresh();
+      }
+    })
+  );
+
   if (!folder) {
     return;
   }
-  const provider = new StatusTreeProvider(folder);
+
+  provider = new StatusTreeProvider(folder);
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("pulseStatus.features", provider)
   );
@@ -131,16 +200,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const watch = vscode.workspace.createFileSystemWatcher(
     new vscode.RelativePattern(folder, ".pulse/features/**")
   );
-  const refreshAll = () => {
-    provider.refresh();
-    void StatusBoardPanel.current?.refresh();
-  };
   watch.onDidChange(refreshAll);
   watch.onDidCreate(refreshAll);
   watch.onDidDelete(refreshAll);
   context.subscriptions.push(watch);
 
-  // Backup: save events (and some external writes that touch the cards)
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((doc) => {
       if (doc.uri.fsPath.startsWith(featuresDir(folder))) {
@@ -166,45 +230,6 @@ export function activate(context: vscode.ExtensionContext): void {
   watchCleancode.onDidCreate(() => void StatusBoardPanel.current?.refresh());
   watchCleancode.onDidDelete(() => void StatusBoardPanel.current?.refresh());
   context.subscriptions.push(watchCleancode);
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("pulseStatus.openBoard", (featureId?: string) => {
-      StatusBoardPanel.createOrShow(context, folder, featureId);
-    }),
-    vscode.commands.registerCommand("pulseStatus.refresh", () => {
-      provider.refresh();
-      void StatusBoardPanel.current?.refresh();
-    }),
-    vscode.commands.registerCommand("pulseStatus.openRegistry", async () => {
-      await vscode.commands.executeCommand(
-        "revealInExplorer",
-        vscode.Uri.file(featuresDir(folder))
-      );
-    }),
-    vscode.commands.registerCommand("pulseStatus.runDetect", () => {
-      runDetectInTerminal(folder);
-    }),
-    vscode.commands.registerCommand("pulseStatus.setSort", async () => {
-      const pick = await vscode.window.showQuickPick(
-        ["priority", "roi", "percent", "phase"],
-        { title: "Sort features by" }
-      );
-      if (pick) {
-        provider.sortKey = pick as SortKey;
-        provider.refresh();
-      }
-    }),
-    vscode.commands.registerCommand("pulseStatus.setFilter", async () => {
-      const pick = await vscode.window.showQuickPick(
-        ["all", "partial", "todo", "done", "mvp"],
-        { title: "Filter features" }
-      );
-      if (pick) {
-        provider.filter = pick as FilterMode;
-        provider.refresh();
-      }
-    })
-  );
 }
 
 export function deactivate(): void {}

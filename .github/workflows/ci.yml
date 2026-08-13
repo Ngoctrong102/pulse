@@ -38,7 +38,8 @@ jobs:
           cache-dependency-path: extension/package-lock.json
       - run: npm ci
       - run: npm run compile
-      - run: npx --yes @vscode/vsce package --no-dependencies --allow-missing-repository
+      # Include runtime deps (js-yaml) — --no-dependencies breaks activation
+      - run: npx --yes @vscode/vsce package --allow-missing-repository
       - name: Embedded VSIX present
         working-directory: .
         run: test -f pulse/embed/extension/pulse-board.vsix

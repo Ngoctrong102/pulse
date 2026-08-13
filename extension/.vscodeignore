@@ -3,7 +3,14 @@
 src/**
 tsconfig.json
 package-lock.json
-node_modules/**
 **/*.map
 **/*.ts
 !out/**/*.js
+node_modules/**
+!node_modules/js-yaml/**
+!node_modules/argparse/**
+node_modules/js-yaml/dist/**
+node_modules/js-yaml/**/*.map
+node_modules/js-yaml/README.md
+node_modules/argparse/README.md
+node_modules/argparse/**/*.md
