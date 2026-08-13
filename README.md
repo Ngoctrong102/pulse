@@ -17,13 +17,19 @@ It does **not** rewrite your architecture, force a folder layout, or touch files
 
 ## Install / update / uninstall
 
-Recommended (isolated CLI — no project `.venv` needed):
+Recommended (isolated CLI — works even without a system Python):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Ngoctrong102/pulse/main/install.sh | bash
 ```
 
-That creates `~/.local/share/pulse/venv`, installs pulse there, and puts a shim at `~/.local/bin/pulse` (add that dir to `PATH` if needed).
+What it does:
+
+1. Use Python **≥ 3.11** if already on the machine
+2. Otherwise install **uv**, let uv fetch Python, then install pulse into `~/.local/share/pulse/venv`
+3. Put a shim at `~/.local/bin/pulse` (add that dir to `PATH` if needed)
+
+Needs only `curl` (+ network). No project `.venv` required for the CLI itself.
 
 ```bash
 pulse update                 # pull latest + sync .pulse/ in this project
