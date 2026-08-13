@@ -1,7 +1,7 @@
 <!-- pulse:begin -->
 # Pulse — project operating system (GitHub Copilot)
 
-Status lives in **`.pulse/features/`** (one YAML card per feature / bug / tech-debt; `_meta.yaml` has `focus_id` + `code_roots`). Chat does **not** update the board until a card is written and you run generate.
+Status lives in **`.pulse/features/`** (one YAML card per feature / bug / tech-debt; `_meta.yaml` has `focus_id` + `tag_prefix`). Chat does **not** update the board until a card is written and you run generate.
 
 Prefer the CLI:
 
@@ -19,7 +19,7 @@ Edit **cards** under `.pulse/features/` / `.pulse/cleancode/`. Do **not** edit v
 
 | Change | Action |
 |---|---|
-| Product code under `_meta.code_roots` | Patch matching card |
+| Product code anywhere in the repo | Patch matching card |
 | Product docs treated as SoT | Same — or `new --type feature` |
 | Bug / tech-debt found | `new --type bug` / `new --type tech-debt` |
 

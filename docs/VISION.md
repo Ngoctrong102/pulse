@@ -19,7 +19,7 @@ On `init`, pulse writes **``.pulse/``** inside the host project (and, by default
 3. **Know debt** — tech-debt and bug cards on one board
 4. **Keep clean** — quality self-check → backlog
 5. **Keep docs honest** — drift + mismatch detect
-6. **Sparse tags** — configurable prefix + code_roots
+6. **Sparse tags** — configurable `tag_prefix`, whole-repo scan
 7. **Stay extensible** — plugins
 
 ## Quality loop

@@ -33,7 +33,6 @@ export type Registry = {
   updated?: string;
   project?: string;
   tag_prefix?: string;
-  code_roots?: string[];
   speckit?: boolean;
   focus_id?: string | null;
   plugins?: Record<string, unknown>;
@@ -68,7 +67,6 @@ const META_KEY_ORDER = [
   "version",
   "project",
   "tag_prefix",
-  "code_roots",
   "speckit",
   "updated",
   "focus_id",
@@ -172,7 +170,6 @@ export function loadRegistry(folder: string): Registry {
     updated: meta.updated as string | undefined,
     project: meta.project as string | undefined,
     tag_prefix: meta.tag_prefix as string | undefined,
-    code_roots: meta.code_roots as string[] | undefined,
     speckit: meta.speckit as boolean | undefined,
     focus_id,
     plugins: meta.plugins as Record<string, unknown> | undefined,

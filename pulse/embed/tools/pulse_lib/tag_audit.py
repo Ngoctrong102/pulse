@@ -4,8 +4,9 @@ Configured via ``.pulse/features/_meta.yaml``:
 
 ```yaml
 tag_prefix: MYAPP          # → // MYAPP: FR-001
-code_roots: [src, app]     # product code roots for audit
 ```
+
+Scans the whole project tree (skips vendored / hidden / venv paths).
 """
 
 from __future__ import annotations
@@ -22,9 +23,20 @@ from pulse_lib.paths import META_PATH, REPO_ROOT
 
 ID_TOKEN_RE = re.compile(r"\b((?:FR|NFR|TECH|UF|DEC)[-A-Z0-9.]+)\b")
 CODE_SUFFIXES = {".py", ".swift", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".kt"}
+_SKIP_DIR_NAMES = {
+    "node_modules",
+    ".venv",
+    "venv",
+    "vendor",
+    "dist",
+    "build",
+    "target",
+    "__pycache__",
+    ".pulse",
+    ".git",
+}
 
 _DEFAULT_PREFIX = "SK"
-_DEFAULT_ROOTS = ("src",)
 
 
 def _load_meta() -> dict[str, Any]:
@@ -48,14 +60,6 @@ def project_label() -> str:
     return str(meta.get("project") or "this project")
 
 
-def code_roots() -> list[str]:
-    meta = _load_meta()
-    roots = meta.get("code_roots")
-    if isinstance(roots, list) and roots:
-        return [str(r).strip().strip("/") for r in roots if str(r).strip()]
-    return list(_DEFAULT_ROOTS)
-
-
 def tag_marker() -> str:
     return f"{tag_prefix()}:"
 
@@ -64,9 +68,13 @@ def tag_re() -> re.Pattern[str]:
     return re.compile(rf"{re.escape(tag_prefix())}:\s*([A-Z0-9_.,\- ]+)", re.I)
 
 
+def _should_skip_path(path: Path) -> bool:
+    return any(part in _SKIP_DIR_NAMES or part.startswith(".") for part in path.parts)
+
+
 def _iter_code_files(base: Path) -> Iterable[Path]:
     if base.is_file():
-        if base.suffix.lower() in CODE_SUFFIXES:
+        if base.suffix.lower() in CODE_SUFFIXES and not _should_skip_path(base):
             yield base
         return
     if not base.is_dir():
@@ -74,9 +82,11 @@ def _iter_code_files(base: Path) -> Iterable[Path]:
     for path in base.rglob("*"):
         if path.suffix.lower() not in CODE_SUFFIXES:
             continue
-        if "node_modules" in path.parts or ".venv" in path.parts:
-            continue
-        if any(part.startswith(".") for part in path.parts):
+        try:
+            rel_parts = path.relative_to(REPO_ROOT).parts
+        except ValueError:
+            rel_parts = path.parts
+        if any(part in _SKIP_DIR_NAMES or part.startswith(".") for part in rel_parts):
             continue
         yield path
 
@@ -93,9 +103,8 @@ def scan_code_tags(roots: list[Path] | None = None) -> dict[str, list[str]]:
     """req_id -> relative paths that mention it."""
     hits: dict[str, list[str]] = defaultdict(list)
     prefix_l = tag_prefix().lower() + ":"
-    if roots is None:
-        roots = [REPO_ROOT / r for r in code_roots()]
-    for root in roots:
+    scan_roots = roots if roots is not None else [REPO_ROOT]
+    for root in scan_roots:
         if not root.exists():
             continue
         for path in _iter_code_files(root):
@@ -125,14 +134,19 @@ def path_tag_ids(rel: str) -> set[str]:
 
 
 def is_code_evidence_path(rel: str) -> bool:
-    roots = tuple(f"{r}/" for r in code_roots())
-    if not any(rel.startswith(r) for r in roots):
+    """True if ``rel`` looks like product code (any folder; skips tests/vendor)."""
+    parts = Path(rel).parts
+    if not parts:
         return False
-    parts = rel.split("/")
+    if any(part in _SKIP_DIR_NAMES or part.startswith(".") for part in parts):
+        return False
     if "Tests" in parts or "tests" in parts:
         return False
     name = parts[-1]
     if name.startswith("test_") or name.endswith("Tests.swift") or name.endswith("_test.py"):
+        return False
+    suffix = Path(name).suffix.lower()
+    if suffix and suffix not in CODE_SUFFIXES:
         return False
     return True
 
@@ -151,27 +165,23 @@ def feature_fr_nfr_ids(feat: dict[str, Any]) -> set[str]:
 
 def audit_orphan_code_tags(catalog: dict[str, str]) -> list[Finding]:
     findings: list[Finding] = []
-    for root_name in code_roots():
-        root = REPO_ROOT / root_name
-        if not root.is_dir():
+    for path in _iter_code_files(REPO_ROOT):
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
             continue
-        for path in _iter_code_files(root):
-            try:
-                text = path.read_text(encoding="utf-8", errors="ignore")
-            except OSError:
-                continue
-            rel = str(path.relative_to(REPO_ROOT))
-            for req_id in extract_tag_ids_from_text(text):
-                if req_id not in catalog:
-                    findings.append(
-                        Finding(
-                            "warning",
-                            "orphan_code_tags",
-                            f"Tag {req_id} in {rel} not in docs catalog",
-                            req_id=req_id,
-                            evidence=[rel],
-                        )
+        rel = str(path.relative_to(REPO_ROOT))
+        for req_id in extract_tag_ids_from_text(text):
+            if req_id not in catalog:
+                findings.append(
+                    Finding(
+                        "warning",
+                        "orphan_code_tags",
+                        f"Tag {req_id} in {rel} not in docs catalog",
+                        req_id=req_id,
+                        evidence=[rel],
                     )
+                )
     return findings
 
 

@@ -12,8 +12,8 @@ Layout (only thing pulse owns inside a host project)::
         cursor/               # optional agent rule templates (not auto-linked)
         BOARD.md, DRIFT.md, …
 
-Product code stays wherever the user already keeps it; ``code_roots`` in
-``_meta.yaml`` are relative to the **project root** (parent of ``.pulse``).
+Product code stays wherever the user already keeps it. Tag audit scans the
+whole project tree (skipping vendored / hidden / venv paths).
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ def discover_project_root(pulse_home: Path | None = None) -> Path:
 PULSE_HOME = discover_pulse_home()
 PROJECT_ROOT = discover_project_root(PULSE_HOME)
 
-# Back-compat alias: many modules used REPO_ROOT for *project* root (code_roots).
+# Back-compat alias: many modules used REPO_ROOT for *project* root.
 REPO_ROOT = PROJECT_ROOT
 
 FEATURES_DIR = PULSE_HOME / "features"

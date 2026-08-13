@@ -21,7 +21,7 @@ description: Validate/report/generate project status; explain/next prompts; docs
 
 | Trigger | Do |
 |---|---|
-| Changed product code (`code_roots`) or product docs | `set` / `new` then `generate` |
+| Changed product code or product docs | `set` / `new` then `generate` |
 | Bug / tech-debt found | `new --type bug|tech-debt` |
 | User asks status / next | `explain` / `next` — never invent from memory |
 

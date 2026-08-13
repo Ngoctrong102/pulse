@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from pulse_lib.paths import BOARD_PATH, FEATURES_DIR as REGISTRY_PATH, MISMATCH_REPORT, PROJECT_ROOT, REPO_ROOT
-from pulse_lib.tag_audit import code_roots, project_label, tag_marker
+from pulse_lib.tag_audit import project_label, tag_marker
 
 def _meta_flags() -> dict:
     """Lightweight meta read (avoid circular imports via tag_audit helpers)."""
@@ -260,7 +260,7 @@ def _speckit_next_playbook(item: dict[str, Any], feat: dict[str, Any] | None) ->
         lines.extend(
             [
                 "1. **speckit-specify** for the remaining gap (brownfield: cite product docs / requirements, "
-                "real modules under code_roots — no greenfield rewrite).",
+                "real modules in this repo — no greenfield rewrite).",
                 f"2. Continue: {SPECKIT_LOOP}.",
                 "3. Attach the slice path to `specs:` on the feature in `.pulse/features/`.",
                 "4. Implement only via tasks.md after tasks exist.",

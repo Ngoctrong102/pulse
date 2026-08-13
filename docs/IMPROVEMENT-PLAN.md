@@ -100,7 +100,7 @@ Checklist:
 
 ## P0 — correctness / productize (confirm before coding)
 
-- [x] Preserve full `_meta.yaml` on save (`tag_prefix`, `code_roots`, `plugins`, `speckit`, …) — verify intent first
+- [x] Preserve full `_meta.yaml` on save (`tag_prefix`, `plugins`, `speckit`, …) — verify intent first
 - [x] Extension `registry.ts`: align `featuresDir` / `cleancodeDir` with `.pulse/…` (or dual-discover); watchers already use `.pulse`
 - [x] Package `embed/` so `pip install` + `init` works (or document source-only)
 - [x] Regression tests: meta round-trip after `set`/`new`; extension path smoke if applicable

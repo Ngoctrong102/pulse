@@ -10,7 +10,7 @@
 | Clean-code scoreboard | done |
 | Quality-raise (self-check → backlog) | done |
 | Docs↔code sync rule + stop-hook | done |
-| Configurable `code_roots` + `tag_prefix` | done |
+| Configurable `tag_prefix` (whole-repo tag scan) | done |
 | Plugins (builtin / host / pip) | done |
 | Spec Kit prompts | optional (`speckit`) |
 

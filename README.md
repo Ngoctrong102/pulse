@@ -20,7 +20,7 @@ cd your-project
 pulse init
 ```
 
-That’s it — project name / tag prefix come from the folder; `code_roots` are detected (`src`, `app`, …). Creates `.pulse/` + `.venv`, runs `generate`.
+That’s it — project name / tag prefix come from the folder. Creates `.pulse/` + `.venv`, runs `generate`.
 
 Optional:
 

@@ -71,7 +71,6 @@ META_KEY_ORDER = (
     "version",
     "project",
     "tag_prefix",
-    "code_roots",
     "speckit",
     "pulse_version",
     "updated",

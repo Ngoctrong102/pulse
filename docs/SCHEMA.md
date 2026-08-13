@@ -10,7 +10,6 @@ Source of truth for project settings and cards is **`.pulse/features/`**.
 | `version` | int | Registry format version (currently `1`) |
 | `project` | string | Display name |
 | `tag_prefix` | string | Uppercase product tag prefix |
-| `code_roots` | string[] | Product folders relative to project root |
 | `speckit` | bool | When false, prompts omit Spec Kit jargon |
 | `pulse_version` | string | Kit version that last init/upgrade stamped |
 | `updated` | date string | Last board touch |

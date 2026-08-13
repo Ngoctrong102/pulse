@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Pulse Sync
 
-The Status Board reads **`.pulse/features/`** (one YAML card per feature / bug / tech-debt; `_meta.yaml` = project meta + `focus_id` + `code_roots`). Chat answers and raw product-doc edits do **not** update the board until a card is written + `generate`.
+The Status Board reads **`.pulse/features/`** (one YAML card per feature / bug / tech-debt; `_meta.yaml` = project meta + `focus_id`). Chat answers and raw product-doc edits do **not** update the board until a card is written + `generate`.
 
 pulse lives only under `.pulse/` — it does not require any product folder layout.
 
@@ -24,7 +24,7 @@ Edit **cards** under `.pulse/features/` (and `.pulse/cleancode/`). Do **not** ed
 
 | Change | Action |
 |---|---|
-| Product **code** under folders listed in `_meta.code_roots` | Patch matching card |
+| Product **code** anywhere in the repo | Patch matching card |
 | Product **docs** the team treats as SoT | Same — or `new --type feature` for net-new scope |
 | **Bug** / **tech-debt** found | `new --type bug` / `new --type tech-debt` |
 

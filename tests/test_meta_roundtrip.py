@@ -17,8 +17,6 @@ KIT = Path(__file__).resolve().parents[1]
 def demo(tmp_path: Path):
     root = tmp_path / "Demo"
     root.mkdir()
-    (root / "src").mkdir()
-    (root / "app").mkdir()
     env = {**os.environ, "PYTHONPATH": str(KIT)}
     subprocess.check_call(
         [sys.executable, "-m", "pulse", "init", "--force", "--no-venv", "--no-generate"],
@@ -55,7 +53,7 @@ def _load_meta(demo: Path) -> dict:
 def _assert_core_meta(meta: dict) -> None:
     assert meta.get("project") == "Demo"
     assert meta.get("tag_prefix") == "DEMO"
-    assert meta.get("code_roots") == ["src", "app"]
+    assert "code_roots" not in meta
     assert meta.get("speckit") is False
     assert "plugins" in meta
     assert isinstance(meta["plugins"], dict)

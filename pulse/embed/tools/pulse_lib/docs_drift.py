@@ -259,7 +259,7 @@ def analyze_docs_drift(data: dict[str, Any] | None = None) -> dict[str, Any]:
                         Finding(
                             "info",
                             "req_id_without_tag",
-                            f"{req_id} covered by {fid} on board but no {tag_marker()} tag in code roots "
+                            f"{req_id} covered by {fid} on board but no {tag_marker()} tag in code "
                             "(unimplemented, unlabeled, or docs-only)",
                             feature_id=fid,
                             req_id=req_id,
@@ -385,7 +385,7 @@ def render_drift_md(report: dict[str, Any]) -> str:
     lines.extend(["", f"## Evidence paths missing / mismatched {tag_marker()} tags", ""])
     ev = report.get("evidence_untagged") or []
     if not ev:
-        lines.append("_None — code_roots evidence.paths_any have sparse tags (or no code evidence)._")
+        lines.append("_None — evidence.paths_any have sparse tags (or no code evidence)._")
     else:
         lines.append("| Feature | Path | Kind |")
         lines.append("|---|---|---|")

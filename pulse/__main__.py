@@ -79,12 +79,10 @@ exec "$PY" "${PULSE_HOME}/tools/pulse-cli/__main__.py" "$@"
 '''
 
 
-def _meta_yaml(project: str, tag_prefix: str, code_roots: list[str]) -> str:
-    roots = ", ".join(f'"{r}"' for r in code_roots)
+def _meta_yaml(project: str, tag_prefix: str) -> str:
     return f"""version: 1
 project: {project}
 tag_prefix: {tag_prefix}
-code_roots: [{roots}]
 speckit: false
 pulse_version: {__version__}
 updated: '1970-01-01'
@@ -112,7 +110,6 @@ done:
 - pulse init (.pulse/ workspace) into {project}
 remaining:
 - Add real feature cards with .pulse/bin/pulse new
-- Set code_roots in .pulse/features/_meta.yaml to your folders
 - Try .pulse/bin/pulse next --prompt
 evidence:
   paths_any: []
@@ -191,19 +188,11 @@ def _infer_tag_prefix(project: str) -> str:
     return raw or "APP"
 
 
-def _infer_code_roots(root: Path) -> list[str]:
-    """Pick existing product folders; fall back to ``src``."""
-    candidates = ("src", "app", "backend", "frontend", "lib", "pkg", "packages")
-    found = [c for c in candidates if (root / c).is_dir()]
-    return found or ["src"]
-
-
 def init_project(
     target: Path,
     *,
     project: str | None = None,
     tag_prefix: str | None = None,
-    code_roots: list[str] | None = None,
     force: bool = False,
     with_venv: bool = True,
     generate: bool = True,
@@ -217,7 +206,6 @@ def init_project(
 
     project = project or _infer_project_name(project_root)
     tag_prefix = tag_prefix or _infer_tag_prefix(project)
-    roots = code_roots if code_roots is not None else _infer_code_roots(project_root)
 
     # Engine
     _copytree(EMBED_ROOT / "tools", pulse / "tools", force=force)
@@ -243,7 +231,7 @@ def init_project(
     features = pulse / "features"
     features.mkdir(parents=True, exist_ok=True)
     (pulse / "cleancode").mkdir(parents=True, exist_ok=True)
-    _write_text(features / "_meta.yaml", _meta_yaml(project, tag_prefix, roots), force=force)
+    _write_text(features / "_meta.yaml", _meta_yaml(project, tag_prefix), force=force)
     _write_text(features / "getting-started.yaml", _sample_feature(project), force=force)
     _write_text(pulse / "README.md", _readme(project), force=force)
     _write_text(
@@ -263,7 +251,7 @@ def init_project(
         _run_project_generate(project_root)
 
     print(f"pulse init → {pulse}")
-    print(f"  project={project}  tag_prefix={tag_prefix}  code_roots={roots}")
+    print(f"  project={project}  tag_prefix={tag_prefix}")
     print("  optional: pulse cursor link · pulse github link")
 
 
@@ -744,7 +732,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    init = sub.add_parser("init", help="Init .pulse/ in the current project (infers name/roots)")
+    init = sub.add_parser("init", help="Init .pulse/ in the current project (infers name)")
     init.add_argument(
         "path",
         nargs="?",
@@ -753,7 +741,6 @@ def main(argv: list[str] | None = None) -> int:
     )
     init.add_argument("--project", default=None, help=argparse.SUPPRESS)
     init.add_argument("--tag-prefix", default=None, help=argparse.SUPPRESS)
-    init.add_argument("--code-roots", default=None, help=argparse.SUPPRESS)
     init.add_argument("--force", action="store_true", help=argparse.SUPPRESS)
     init.add_argument("--no-venv", action="store_true", help=argparse.SUPPRESS)
     init.add_argument("--no-generate", action="store_true", help=argparse.SUPPRESS)
@@ -825,19 +812,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "init":
         target = Path(args.path)
-        project = args.project  # may be None → inferred
-        tag_prefix = args.tag_prefix
-        raw_roots = getattr(args, "code_roots", None)
-        code_roots = (
-            [x.strip() for x in str(raw_roots).split(",") if x.strip()]
-            if raw_roots
-            else None
-        )
         init_project(
             target,
-            project=project,
-            tag_prefix=tag_prefix,
-            code_roots=code_roots,
+            project=args.project,  # may be None → inferred
+            tag_prefix=args.tag_prefix,
             force=bool(args.force),
             with_venv=not bool(getattr(args, "no_venv", False)),
             generate=not bool(getattr(args, "no_generate", False)),

@@ -70,8 +70,8 @@ def test_tag_prefix_from_meta(demo: Path):
         "PYTHONPATH": str(demo / ".pulse" / "tools"),
     }
     code = (
-        "from pulse_lib.tag_audit import tag_marker, code_roots; "
-        "print(tag_marker()); print(','.join(code_roots()))"
+        "from pulse_lib.tag_audit import tag_marker; "
+        "print(tag_marker())"
     )
     r = subprocess.run(
         [sys.executable, "-c", code],
@@ -82,7 +82,6 @@ def test_tag_prefix_from_meta(demo: Path):
         check=True,
     )
     assert r.stdout.splitlines()[0] == "DEMO:"
-    assert r.stdout.splitlines()[1] == "src"
 
 
 def test_mismatch_detect(demo: Path):

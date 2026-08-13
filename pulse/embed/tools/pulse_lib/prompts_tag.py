@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from pulse_lib.prompt_common import _card_path, _list_preview
-from pulse_lib.tag_audit import code_roots, project_label, tag_marker
+from pulse_lib.tag_audit import project_label, tag_marker
 
 
 def build_tag_prompt(data: dict[str, Any], feature_id: str) -> str:
@@ -54,7 +54,6 @@ def build_untagged_cleanup_prompt(data: dict[str, Any], *, all_project: bool = F
     """
     features = [f for f in (data.get("features") or []) if isinstance(f, dict)]
     focus_id = data.get("focus_id")
-    roots = code_roots()
     scope_note: str
     ranked: list[dict[str, Any]]
 
@@ -92,7 +91,7 @@ def build_untagged_cleanup_prompt(data: dict[str, Any], *, all_project: bool = F
         f"Review `{tag_marker()}` on {project_label()} — sparse; prioritize public anchors missing tags.",
         "",
         f"## Scope — {scope_note}",
-        f"- Prefer `rg '{tag_marker()}' {' '.join(roots)}` limited to evidence paths below.",
+        f"- Prefer `rg '{tag_marker()}'` limited to evidence paths below (skip vendor/tests).",
         "- Max ~3 IDs/anchor; skip test/generated/vendor. No spam. No auto-heal.",
         "- Large smells → quality-raise + approval before a big cleanup.",
         "",
