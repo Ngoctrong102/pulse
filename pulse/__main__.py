@@ -110,8 +110,7 @@ mocks: []
 done:
 - pulse init (.pulse/ workspace) into {project}
 remaining:
-- Add real feature cards with .pulse/bin/pulse new
-- Try .pulse/bin/pulse next --prompt
+- Add real feature cards for this project
 evidence:
   paths_any: []
 """
@@ -123,26 +122,16 @@ def _readme(project: str) -> str:
 This folder is the **project operating system** workspace. It does not prescribe
 your product architecture — only cards, views, and tools live here.
 
-```bash
-.pulse/bin/pulse validate
-.pulse/bin/pulse next --prompt
-.pulse/bin/pulse explain
-.pulse/bin/pulse generate
-.pulse/bin/pulse mismatch detect
-```
+**Humans:** edit cards under `.pulse/features/` (and `.pulse/cleancode/`), or use
+the VS Code / Cursor extension. Commit `.pulse/` if the team should share status
+(pulse never auto-edits `.gitignore`).
 
-Optional agent rules: `.pulse/cursor/` (Cursor) and `.pulse/github/` (GitHub Copilot).
-``pulse init`` asks whether to link them; you can also run:
+**Agents:** prefer `.pulse/bin/pulse` (`next --prompt`, `explain`, `set`, `generate`,
+`mismatch detect`) over inventing status from chat. Do not edit vendored
+`.pulse/tools/` — refresh with `pulse upgrade`.
 
-```bash
-pulse cursor link
-pulse github link
-```
-
-Commit `.pulse/` if the team should share status (pulse never auto-edits `.gitignore`).
-
-**Agents:** edit cards under `.pulse/features/` (and `.pulse/cleancode/`), not vendored
-`.pulse/tools/` — refresh the engine with `pulse upgrade` from the kit.
+Optional agent rules: `.pulse/cursor/` / `.pulse/github/` — linked at `pulse init`,
+or later via `pulse cursor link` / `pulse github link`.
 """
 
 
