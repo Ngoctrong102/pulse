@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -233,6 +234,29 @@ def init_project(
     print("    pulse cursor link   # optional: install agent rules into .cursor/")
 
 
+GIT_REPO = "https://github.com/Ngoctrong102/pulse.git"
+PIP_SPEC = f"git+{GIT_REPO}"
+
+
+def _pip_install_latest() -> None:
+    print(f"pulse update: installing latest from {GIT_REPO} …")
+    rc = subprocess.call(
+        [sys.executable, "-m", "pip", "install", "-U", PIP_SPEC],
+    )
+    if rc != 0:
+        _die("pip install failed — fix network/permissions, then retry `pulse update`")
+
+
+def _pip_uninstall() -> None:
+    print("pulse uninstall: removing package …")
+    rc = subprocess.call(
+        [sys.executable, "-m", "pip", "uninstall", "-y", "pulse"],
+    )
+    if rc != 0:
+        _die("pip uninstall failed")
+    print("Done. Project `.pulse/` folders were left alone (your cards stay).")
+
+
 def upgrade_project(target: Path) -> None:
     """Refresh vendored ``.pulse/tools`` (+ cursor templates + bin) from this kit.
 
@@ -258,9 +282,38 @@ def upgrade_project(target: Path) -> None:
     _write_version_stamp(pulse)
     _bump_meta_pulse_version(pulse / "features" / "_meta.yaml")
 
-    print(f"pulse upgrade → {pulse}")
-    print(f"  tools/cursor/bin refreshed to kit {__version__}")
+    print(f"pulse update → synced {pulse} to kit {__version__}")
     print("  preserved: features/, cleancode/, plugins/, generated views")
+
+
+def update_cmd(target: Path, *, fetch: bool = True) -> None:
+    """Install latest kit from GitHub, then sync ``.pulse/`` in the project (if any)."""
+    project_root = target.expanduser().resolve()
+    if fetch and os.environ.get("PULSE_NO_FETCH") != "1":
+        _pip_install_latest()
+        # Re-enter with the freshly installed package (this process still has old code).
+        rc = subprocess.call(
+            [
+                sys.executable,
+                "-m",
+                "pulse",
+                "update",
+                str(project_root),
+                "--no-fetch",
+            ]
+        )
+        if rc != 0:
+            raise SystemExit(rc)
+        return
+
+    pulse = project_root / ".pulse"
+    if pulse.is_dir():
+        upgrade_project(project_root)
+        return
+    print(
+        f"pulse update: package is current ({__version__}); "
+        "no .pulse/ here — run inside a project (or `pulse init`) to sync tools."
+    )
 
 
 def _default_hooks_json() -> dict[str, Any]:
@@ -409,7 +462,17 @@ def _run_vendored(argv: list[str]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    known = {"init", "upgrade", "update", "run", "version", "cursor", "-h", "--help"}
+    known = {
+        "init",
+        "update",
+        "upgrade",
+        "uninstall",
+        "run",
+        "version",
+        "cursor",
+        "-h",
+        "--help",
+    }
     if argv and argv[0] not in known and not argv[0].startswith("-"):
         return _run_vendored(argv)
 
@@ -431,11 +494,18 @@ def main(argv: list[str] | None = None) -> int:
     init.add_argument("--force", action="store_true")
 
     up = sub.add_parser(
-        "upgrade",
-        aliases=["update"],
-        help="Refresh .pulse/tools (+ cursor templates) from this kit",
+        "update",
+        aliases=["upgrade"],
+        help="Install latest pulse from GitHub, then sync .pulse/ in this project",
     )
     up.add_argument("path", nargs="?", default=".")
+    up.add_argument(
+        "--no-fetch",
+        action="store_true",
+        help=argparse.SUPPRESS,  # internal: skip pip (used after self-update / tests)
+    )
+
+    sub.add_parser("uninstall", help="Uninstall the pulse package (keeps project .pulse/ cards)")
 
     cur = sub.add_parser("cursor", help="Optional Cursor agent integration")
     cur_sub = cur.add_subparsers(dest="cursor_cmd", required=True)
@@ -465,8 +535,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "cursor" and args.cursor_cmd == "unlink":
         cursor_unlink(Path(args.path))
         return 0
-    if args.cmd in {"upgrade", "update"}:
-        upgrade_project(Path(args.path))
+    if args.cmd in {"update", "upgrade"}:
+        update_cmd(Path(args.path), fetch=not bool(getattr(args, "no_fetch", False)))
+        return 0
+    if args.cmd == "uninstall":
+        _pip_uninstall()
         return 0
     if args.cmd == "init":
         target = Path(args.path)

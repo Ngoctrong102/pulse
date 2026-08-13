@@ -54,9 +54,9 @@ def test_upgrade_refreshes_tools_preserves_cards(demo: Path):
     assert marker.is_file()
     marker.write_text("# corrupted by host\n", encoding="utf-8")
 
-    env = {**os.environ, "PYTHONPATH": str(KIT)}
+    env = {**os.environ, "PYTHONPATH": str(KIT), "PULSE_NO_FETCH": "1"}
     subprocess.check_call(
-        [sys.executable, "-m", "pulse", "upgrade", str(demo)],
+        [sys.executable, "-m", "pulse", "update", "--no-fetch", str(demo)],
         env=env,
         cwd=str(KIT),
     )
