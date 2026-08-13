@@ -179,6 +179,6 @@ if ! need_cmd pulse; then
   log ""
 fi
 log "Next:"
-log "  pulse init /path/to/your/project"
+log "  cd your-project && pulse init"
 log "  pulse upgrade"
 log "  pulse uninstall"

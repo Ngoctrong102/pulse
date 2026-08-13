@@ -180,14 +180,33 @@ def _bump_meta_pulse_version(meta_path: Path) -> None:
     )
 
 
+def _infer_project_name(root: Path) -> str:
+    name = root.resolve().name.strip() or "project"
+    return name
+
+
+def _infer_tag_prefix(project: str) -> str:
+    raw = "".join(ch if ch.isalnum() else "_" for ch in project.upper())
+    raw = "_".join(p for p in raw.split("_") if p)
+    return raw or "APP"
+
+
+def _infer_code_roots(root: Path) -> list[str]:
+    """Pick existing product folders; fall back to ``src``."""
+    candidates = ("src", "app", "backend", "frontend", "lib", "pkg", "packages")
+    found = [c for c in candidates if (root / c).is_dir()]
+    return found or ["src"]
+
+
 def init_project(
     target: Path,
     *,
-    project: str,
-    tag_prefix: str,
-    code_roots: list[str],
-    force: bool,
+    project: str | None = None,
+    tag_prefix: str | None = None,
+    code_roots: list[str] | None = None,
+    force: bool = False,
     with_venv: bool = True,
+    generate: bool = True,
 ) -> None:
     if not EMBED_ROOT.is_dir():
         _die(f"embed templates missing at {EMBED_ROOT}")
@@ -195,6 +214,10 @@ def init_project(
     project_root = target.expanduser().resolve()
     project_root.mkdir(parents=True, exist_ok=True)
     pulse = project_root / ".pulse"
+
+    project = project or _infer_project_name(project_root)
+    tag_prefix = tag_prefix or _infer_tag_prefix(project)
+    roots = code_roots if code_roots is not None else _infer_code_roots(project_root)
 
     # Engine
     _copytree(EMBED_ROOT / "tools", pulse / "tools", force=force)
@@ -220,7 +243,7 @@ def init_project(
     features = pulse / "features"
     features.mkdir(parents=True, exist_ok=True)
     (pulse / "cleancode").mkdir(parents=True, exist_ok=True)
-    _write_text(features / "_meta.yaml", _meta_yaml(project, tag_prefix, code_roots), force=force)
+    _write_text(features / "_meta.yaml", _meta_yaml(project, tag_prefix, roots), force=force)
     _write_text(features / "getting-started.yaml", _sample_feature(project), force=force)
     _write_text(pulse / "README.md", _readme(project), force=force)
     _write_text(
@@ -236,15 +259,38 @@ def init_project(
     if with_venv:
         ensure_project_venv(project_root)
 
+    if generate:
+        _run_project_generate(project_root)
+
     print(f"pulse init → {pulse}")
-    print(f"  project_root={project_root}")
-    print(f"  project={project}  tag_prefix={tag_prefix}  code_roots={code_roots}")
-    print("  (wrote .pulse/" + (" + .venv/" if with_venv else "") + ")")
-    print("  next:")
-    print("    .pulse/bin/pulse generate")
-    print("    .pulse/bin/pulse next --prompt")
-    print("    pulse cursor link    # optional Cursor")
-    print("    pulse github link    # optional Copilot")
+    print(f"  project={project}  tag_prefix={tag_prefix}  code_roots={roots}")
+    print("  optional: pulse cursor link · pulse github link")
+
+
+def _run_project_generate(project_root: Path) -> None:
+    """Best-effort ``generate`` after init so BOARD.md exists immediately."""
+    script = project_root / ".pulse" / "bin" / "pulse"
+    if not script.is_file():
+        return
+    env = {
+        **os.environ,
+        "PULSE_ROOT": str(project_root),
+        "PULSE_HOME": str(project_root / ".pulse"),
+        "PYTHONPATH": str(project_root / ".pulse" / "tools"),
+    }
+    py = project_root / ".venv" / "bin" / "python"
+    if not py.is_file():
+        py = Path(sys.executable)
+    try:
+        subprocess.check_call(
+            [str(py), str(project_root / ".pulse" / "tools" / "pulse-cli" / "__main__.py"), "generate"],
+            cwd=str(project_root),
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        print("pulse: hint — run `.pulse/bin/pulse generate` once deps are ready", file=sys.stderr)
 
 
 GIT_REPO = "https://github.com/Ngoctrong102/pulse.git"
@@ -698,21 +744,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    init = sub.add_parser("init", help="Create only <project>/.pulse/ (touches nothing else)")
-    init.add_argument("path", nargs="?", default=".")
-    init.add_argument("--project", default=None)
-    init.add_argument("--tag-prefix", default=None)
+    init = sub.add_parser("init", help="Init .pulse/ in the current project (infers name/roots)")
     init.add_argument(
-        "--code-roots",
-        default="src",
-        help="Product code folders relative to project root (default: src)",
+        "path",
+        nargs="?",
+        default=".",
+        help=argparse.SUPPRESS,  # power users / tests — normal flow is just `pulse init`
     )
-    init.add_argument("--force", action="store_true")
-    init.add_argument(
-        "--no-venv",
-        action="store_true",
-        help="Do not create project .venv / install .pulse/requirements.txt",
-    )
+    init.add_argument("--project", default=None, help=argparse.SUPPRESS)
+    init.add_argument("--tag-prefix", default=None, help=argparse.SUPPRESS)
+    init.add_argument("--code-roots", default=None, help=argparse.SUPPRESS)
+    init.add_argument("--force", action="store_true", help=argparse.SUPPRESS)
+    init.add_argument("--no-venv", action="store_true", help=argparse.SUPPRESS)
+    init.add_argument("--no-generate", action="store_true", help=argparse.SUPPRESS)
 
     up = sub.add_parser(
         "upgrade",
@@ -781,9 +825,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "init":
         target = Path(args.path)
-        project = args.project or target.expanduser().resolve().name
-        tag_prefix = (args.tag_prefix or project).upper().replace(" ", "")
-        code_roots = [x.strip() for x in str(args.code_roots).split(",") if x.strip()]
+        project = args.project  # may be None → inferred
+        tag_prefix = args.tag_prefix
+        raw_roots = getattr(args, "code_roots", None)
+        code_roots = (
+            [x.strip() for x in str(raw_roots).split(",") if x.strip()]
+            if raw_roots
+            else None
+        )
         init_project(
             target,
             project=project,
@@ -791,6 +840,7 @@ def main(argv: list[str] | None = None) -> int:
             code_roots=code_roots,
             force=bool(args.force),
             with_venv=not bool(getattr(args, "no_venv", False)),
+            generate=not bool(getattr(args, "no_generate", False)),
         )
         return 0
     return 2

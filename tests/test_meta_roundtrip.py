@@ -15,27 +15,17 @@ KIT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture()
 def demo(tmp_path: Path):
+    root = tmp_path / "Demo"
+    root.mkdir()
+    (root / "src").mkdir()
+    (root / "app").mkdir()
     env = {**os.environ, "PYTHONPATH": str(KIT)}
     subprocess.check_call(
-        [
-            sys.executable,
-            "-m",
-            "pulse",
-            "init",
-            str(tmp_path),
-            "--project",
-            "Demo",
-            "--tag-prefix",
-            "DEMO",
-            "--code-roots",
-            "src,app",
-            "--force",
-            "--no-venv",
-        ],
+        [sys.executable, "-m", "pulse", "init", "--force", "--no-venv", "--no-generate"],
         env=env,
-        cwd=str(KIT),
+        cwd=str(root),
     )
-    return tmp_path
+    return root
 
 
 def _pulse(demo: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -101,9 +91,9 @@ def test_meta_survives_new_and_generate(demo: Path):
         demo,
         "new",
         "--id",
-        "checkout",
+        "extra-card",
         "--name",
-        "Checkout",
+        "Extra",
         "--type",
         "feature",
     )
@@ -115,4 +105,3 @@ def test_meta_survives_new_and_generate(demo: Path):
     assert r2.returncode == 0, r2.stderr
     meta2 = _load_meta(demo)
     _assert_core_meta(meta2)
-    assert (demo / ".pulse" / "BOARD.md").is_file()

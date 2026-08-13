@@ -17,25 +17,12 @@ KIT = Path(__file__).resolve().parents[1]
 def demo(tmp_path: Path):
     env = {**os.environ, "PYTHONPATH": str(KIT)}
     subprocess.check_call(
-        [
-            sys.executable,
-            "-m",
-            "pulse",
-            "init",
-            str(tmp_path),
-            "--project",
-            "Demo",
-            "--tag-prefix",
-            "DEMO",
-            "--code-roots",
-            "src",
-            "--force",
-            "--no-venv",
-        ],
+        [sys.executable, "-m", "pulse", "init", "--force", "--no-venv", "--no-generate"],
         env=env,
-        cwd=str(KIT),
+        cwd=str(tmp_path),
     )
     return tmp_path
+
 
 
 def test_embed_templates_ship_with_package():

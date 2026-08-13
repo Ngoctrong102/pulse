@@ -14,32 +14,20 @@ KIT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture()
 def demo(tmp_path: Path):
+    root = tmp_path / "Demo"
+    root.mkdir()
     env = {**os.environ, "PYTHONPATH": str(KIT)}
     subprocess.check_call(
-        [
-            sys.executable,
-            "-m",
-            "pulse",
-            "init",
-            str(tmp_path),
-            "--project",
-            "Demo",
-            "--tag-prefix",
-            "DEMO",
-            "--code-roots",
-            "src",
-            "--force",
-            "--no-venv",
-        ],
+        [sys.executable, "-m", "pulse", "init", "--force", "--no-venv", "--no-generate"],
         env=env,
-        cwd=str(KIT),
+        cwd=str(root),
     )
-    # init must not create tools/ or docs/status at project root
-    assert not (tmp_path / "tools").exists()
-    assert not (tmp_path / "docs").exists()
-    assert not (tmp_path / ".cursor").exists()
-    assert (tmp_path / ".pulse" / "bin" / "pulse").is_file()
-    return tmp_path
+    assert not (root / "tools").exists()
+    assert not (root / "docs").exists()
+    assert not (root / ".cursor").exists()
+    assert (root / ".pulse" / "bin" / "pulse").is_file()
+    return root
+
 
 
 def _pulse(demo: Path, *args: str) -> subprocess.CompletedProcess[str]:
