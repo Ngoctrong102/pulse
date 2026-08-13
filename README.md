@@ -20,13 +20,13 @@ cd your-project
 pulse init
 ```
 
-That’s it — project name / tag prefix come from the folder. Creates `.pulse/` + `.venv`, runs `generate`.
+That’s it — project name / tag prefix come from the folder. Creates `.pulse/` + `.venv`, runs `generate`, then asks whether to link Cursor / GitHub Copilot rules.
 
-Optional:
+Later (if you skipped linking):
 
 ```bash
-pulse cursor link     # Cursor
-pulse github link     # GitHub Copilot
+pulse cursor link
+pulse github link
 .pulse/bin/pulse next --prompt
 ```
 

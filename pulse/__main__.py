@@ -2,8 +2,9 @@
 """pulse — install a self-contained ``.pulse/`` workspace into a project.
 
 Does not modify the host project's architecture, docs layout, or ``.gitignore``.
-Optional agent rules stay under ``.pulse/cursor/`` until the user runs
-``pulse cursor link``.
+Agent rule templates land under ``.pulse/cursor/`` and ``.pulse/github/``;
+``pulse init`` can link them into ``.cursor/`` / ``.github/`` (TTY prompt, or
+``--link``).
 """
 
 from __future__ import annotations
@@ -130,7 +131,8 @@ your product architecture — only cards, views, and tools live here.
 .pulse/bin/pulse mismatch detect
 ```
 
-Optional agent rules: `.pulse/cursor/` (Cursor) and `.pulse/github/` (GitHub Copilot) — link with:
+Optional agent rules: `.pulse/cursor/` (Cursor) and `.pulse/github/` (GitHub Copilot).
+``pulse init`` asks whether to link them; you can also run:
 
 ```bash
 pulse cursor link
@@ -188,6 +190,44 @@ def _infer_tag_prefix(project: str) -> str:
     return raw or "APP"
 
 
+def _parse_link_choice(raw: str) -> set[str] | None:
+    """Return ``{cursor,github}`` subset, or ``None`` if the token is unknown."""
+    s = raw.strip().lower()
+    if s in {"", "n", "none", "no"}:
+        return set()
+    if s in {"c", "cursor"}:
+        return {"cursor"}
+    if s in {"g", "github", "copilot"}:
+        return {"github"}
+    if s in {"b", "both", "all"}:
+        return {"cursor", "github"}
+    return None
+
+
+def _prompt_agent_links() -> set[str]:
+    """Ask once on a TTY; non-interactive → none."""
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        return set()
+    print("Link agent rules?")
+    print("  [c] Cursor   [g] GitHub Copilot   [b] both   [N] none")
+    while True:
+        try:
+            raw = input("> ")
+        except EOFError:
+            return set()
+        choice = _parse_link_choice(raw if raw.strip() else "n")
+        if choice is not None:
+            return choice
+        print("  pick c / g / b / n")
+
+
+def _apply_agent_links(project_root: Path, links: set[str], *, force: bool) -> None:
+    if "cursor" in links:
+        cursor_link(project_root, force=force)
+    if "github" in links:
+        github_link(project_root, force=force)
+
+
 def init_project(
     target: Path,
     *,
@@ -196,6 +236,7 @@ def init_project(
     force: bool = False,
     with_venv: bool = True,
     generate: bool = True,
+    link: str | None = None,
 ) -> None:
     if not EMBED_ROOT.is_dir():
         _die(f"embed templates missing at {EMBED_ROOT}")
@@ -216,7 +257,7 @@ def init_project(
         _copytree(plugins_src, pulse / "plugins", force=force)
     (pulse / "plugins").mkdir(parents=True, exist_ok=True)
 
-    # Agent templates (NOT installed into .cursor / .github unless user links)
+    # Agent templates (linked into .cursor / .github only when chosen)
     if (EMBED_ROOT / ".cursor").is_dir():
         _copytree(EMBED_ROOT / ".cursor", pulse / "cursor", force=force)
     if (EMBED_ROOT / ".github").is_dir():
@@ -250,9 +291,21 @@ def init_project(
     if generate:
         _run_project_generate(project_root)
 
+    if link is None:
+        links = _prompt_agent_links()
+    else:
+        parsed = _parse_link_choice(link)
+        if parsed is None:
+            _die("invalid --link (use cursor, github, both, or none)")
+        links = parsed
+    _apply_agent_links(project_root, links, force=force)
+
     print(f"pulse init → {pulse}")
     print(f"  project={project}  tag_prefix={tag_prefix}")
-    print("  optional: pulse cursor link · pulse github link")
+    if links:
+        print(f"  linked: {', '.join(sorted(links))}")
+    else:
+        print("  agent rules: skipped (later: pulse cursor link · pulse github link)")
 
 
 def _run_project_generate(project_root: Path) -> None:
@@ -744,6 +797,12 @@ def main(argv: list[str] | None = None) -> int:
     init.add_argument("--force", action="store_true", help=argparse.SUPPRESS)
     init.add_argument("--no-venv", action="store_true", help=argparse.SUPPRESS)
     init.add_argument("--no-generate", action="store_true", help=argparse.SUPPRESS)
+    init.add_argument(
+        "--link",
+        default=None,
+        choices=["cursor", "github", "both", "none"],
+        help=argparse.SUPPRESS,  # scripts/CI; interactive prompt on TTY when omitted
+    )
 
     up = sub.add_parser(
         "upgrade",
@@ -819,6 +878,7 @@ def main(argv: list[str] | None = None) -> int:
             force=bool(args.force),
             with_venv=not bool(getattr(args, "no_venv", False)),
             generate=not bool(getattr(args, "no_generate", False)),
+            link=getattr(args, "link", None),
         )
         return 0
     return 2

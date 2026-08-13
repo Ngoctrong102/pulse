@@ -9,8 +9,8 @@ On `init`, pulse writes **``.pulse/``** inside the host project (and, by default
 
 - No forced product architecture or folder layout
 - No automatic edits to ``.gitignore`` (commit ``.pulse/`` when the team should share status)
-- Agent rules stay under ``.pulse/cursor/`` / ``.pulse/github/`` until you opt in with
-  ``pulse cursor link`` / ``pulse github link``
+- Agent rules stay under ``.pulse/cursor/`` / ``.pulse/github/`` until you link
+  them (``pulse init`` asks, or ``pulse cursor link`` / ``pulse github link``)
 
 ## Jobs to be done
 

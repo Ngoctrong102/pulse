@@ -125,3 +125,38 @@ def test_github_copilot_link_and_unlink(demo: Path):
     assert "<!-- pulse:begin -->" not in leftover
     assert not (gh / "instructions" / "pulse-features.instructions.md").exists()
     assert not (gh / "pulse-quality-raise.md").exists()
+
+
+def test_init_link_both(tmp_path: Path):
+    env = {**os.environ, "PYTHONPATH": str(KIT)}
+    subprocess.check_call(
+        [
+            sys.executable,
+            "-m",
+            "pulse",
+            "init",
+            "--force",
+            "--no-venv",
+            "--no-generate",
+            "--link",
+            "both",
+        ],
+        env=env,
+        cwd=str(tmp_path),
+    )
+    assert (tmp_path / ".cursor" / "hooks.json").is_file()
+    assert (tmp_path / ".github" / "copilot-instructions.md").is_file()
+
+
+def test_init_prompt_cursor(monkeypatch, tmp_path: Path):
+    from pulse.__main__ import init_project
+
+    answers = iter(["c"])
+    monkeypatch.setattr(sys, "stdin", sys.stdin)
+    monkeypatch.setattr("pulse.__main__.sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("pulse.__main__.sys.stdout.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))
+
+    init_project(tmp_path, force=True, with_venv=False, generate=False)
+    assert (tmp_path / ".cursor" / "hooks.json").is_file()
+    assert not (tmp_path / ".github").exists()
