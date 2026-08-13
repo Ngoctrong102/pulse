@@ -20,7 +20,7 @@ cd your-project
 pulse init
 ```
 
-That’s it — project name / tag prefix come from the folder. Creates `.pulse/` + `.venv`, runs `generate`, then asks whether to link Cursor / GitHub Copilot rules.
+That’s it — project name / tag prefix come from the folder. Creates `.pulse/`, runs `generate`, then asks whether to link Cursor / GitHub Copilot rules. Does **not** create or touch a project `.venv`.
 
 Later (switch tools, or you skipped linking at init):
 
@@ -35,17 +35,16 @@ pulse github link
 
 ```
 your-project/
-  .venv/
   .pulse/          ← status cards, engine, board
-  src/ …           ← your code, untouched
+  src/ …           ← your code + your own .venv, untouched
 ```
 
 
 
 ## Docs
 
-- `[docs/VISION.md](docs/VISION.md)`
-- `[docs/PLUGINS.md](docs/PLUGINS.md)`
-- `[docs/FEATURES.md](docs/FEATURES.md)`
-- `[docs/SCHEMA.md](docs/SCHEMA.md)`
+- [`docs/VISION.md`](docs/VISION.md)
+- [`docs/PLUGINS.md`](docs/PLUGINS.md)
+- [`docs/FEATURES.md`](docs/FEATURES.md)
+- [`docs/SCHEMA.md`](docs/SCHEMA.md)
 

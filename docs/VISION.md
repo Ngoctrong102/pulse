@@ -4,9 +4,9 @@ pulse is a thin **project operating system**: status, next actions, quality loop
 
 ## Containment
 
-On `init`, pulse writes **``.pulse/``** inside the host project (and, by default, a local
-**``.venv/``** for engine deps — skip with ``--no-venv``).
+On `init`, pulse writes **``.pulse/``** inside the host project only.
 
+- No project ``.venv`` / interpreter takeover (engine uses the pulse CLI venv or ``python3``)
 - No forced product architecture or folder layout
 - No automatic edits to ``.gitignore`` (commit ``.pulse/`` when the team should share status)
 - Agent rules stay under ``.pulse/cursor/`` / ``.pulse/github/`` until you link

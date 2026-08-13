@@ -67,10 +67,13 @@ PULSE_HOME="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT_ROOT="$(cd "$PULSE_HOME/.." && pwd)"
 export PULSE_HOME PROJECT_ROOT
 export PULSE_ROOT="$PROJECT_ROOT"
+# Never use the host project's .venv — that belongs to the product app.
 PY=""
+DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
 for cand in \\
-  "${PROJECT_ROOT}/.venv/bin/python" \\
-  "${PROJECT_ROOT}/venv/bin/python"
+  "${PULSE_HOME}/venv/bin/python" \\
+  "${DATA}/pulse/venv/bin/python" \\
+  "$HOME/.local/share/pulse/venv/bin/python"
 do
   if [[ -x "$cand" ]]; then PY="$cand"; break; fi
 done
@@ -223,10 +226,11 @@ def init_project(
     project: str | None = None,
     tag_prefix: str | None = None,
     force: bool = False,
-    with_venv: bool = True,
     generate: bool = True,
     link: str | None = None,
+    with_venv: bool = False,  # deprecated no-op (never touch host .venv)
 ) -> None:
+    del with_venv  # kept for call-site back-compat only
     if not EMBED_ROOT.is_dir():
         _die(f"embed templates missing at {EMBED_ROOT}")
 
@@ -274,9 +278,6 @@ def init_project(
     _write_text(pulse / "requirements.txt", "PyYAML>=6.0\n", force=force)
     _write_version_stamp(pulse, project=project)
 
-    if with_venv:
-        ensure_project_venv(project_root)
-
     if generate:
         _run_project_generate(project_root)
 
@@ -297,6 +298,20 @@ def init_project(
         print("  agent rules: skipped (later: pulse cursor link · pulse github link)")
 
 
+def _engine_python(project_root: Path) -> Path:
+    """Interpreter for the vendored engine — never the host project's ``.venv``."""
+    data = Path(os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share"))
+    for cand in (
+        project_root / ".pulse" / "venv" / "bin" / "python",
+        data / "pulse" / "venv" / "bin" / "python",
+        Path.home() / ".local" / "share" / "pulse" / "venv" / "bin" / "python",
+        Path(sys.executable),
+    ):
+        if cand.is_file():
+            return cand
+    return Path("python3")
+
+
 def _run_project_generate(project_root: Path) -> None:
     """Best-effort ``generate`` after init so BOARD.md exists immediately."""
     script = project_root / ".pulse" / "bin" / "pulse"
@@ -308,9 +323,7 @@ def _run_project_generate(project_root: Path) -> None:
         "PULSE_HOME": str(project_root / ".pulse"),
         "PYTHONPATH": str(project_root / ".pulse" / "tools"),
     }
-    py = project_root / ".venv" / "bin" / "python"
-    if not py.is_file():
-        py = Path(sys.executable)
+    py = _engine_python(project_root)
     try:
         subprocess.check_call(
             [str(py), str(project_root / ".pulse" / "tools" / "pulse-cli" / "__main__.py"), "generate"],
@@ -397,35 +410,9 @@ def _pip_uninstall() -> None:
 
 
 def ensure_project_venv(project_root: Path) -> Path | None:
-    """Create ``project/.venv`` if missing and install ``.pulse/requirements.txt``.
-
-    Returns the venv python path, or None if skipped/failed soft.
-    """
-    project_root = project_root.resolve()
-    venv = project_root / ".venv"
-    py = venv / "bin" / "python"
-    req = project_root / ".pulse" / "requirements.txt"
-    try:
-        if not py.is_file():
-            print("pulse: creating project .venv …")
-            subprocess.check_call(
-                [sys.executable, "-m", "venv", str(venv)],
-                stdout=subprocess.DEVNULL,
-            )
-        if req.is_file():
-            print("pulse: installing .pulse/requirements.txt into .venv …")
-            subprocess.check_call(
-                [str(py), "-m", "pip", "install", "-q", "-U", "pip"],
-                stdout=subprocess.DEVNULL,
-            )
-            subprocess.check_call(
-                [str(py), "-m", "pip", "install", "-q", "-r", str(req)],
-            )
-        return py if py.is_file() else None
-    except (OSError, subprocess.CalledProcessError) as exc:
-        print(f"pulse: warning — could not prepare .venv ({exc})", file=sys.stderr)
-        print("  Install deps later: python3 -m venv .venv && .venv/bin/pip install -r .pulse/requirements.txt", file=sys.stderr)
-        return None
+    """Deprecated no-op — pulse must not own the host project's ``.venv``."""
+    del project_root
+    return None
 
 
 def upgrade_project(target: Path) -> None:
@@ -865,7 +852,6 @@ def main(argv: list[str] | None = None) -> int:
             project=args.project,  # may be None → inferred
             tag_prefix=args.tag_prefix,
             force=bool(args.force),
-            with_venv=not bool(getattr(args, "no_venv", False)),
             generate=not bool(getattr(args, "no_generate", False)),
             link=getattr(args, "link", None),
         )

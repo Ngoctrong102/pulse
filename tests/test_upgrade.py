@@ -127,6 +127,36 @@ def test_github_copilot_link_and_unlink(demo: Path):
     assert not (gh / "pulse-quality-raise.md").exists()
 
 
+def test_init_does_not_create_host_venv(tmp_path: Path):
+    env = {**os.environ, "PYTHONPATH": str(KIT)}
+    # Pretend a host project already has its own .venv — pulse must leave it alone.
+    host_venv = tmp_path / ".venv" / "bin"
+    host_venv.mkdir(parents=True)
+    marker = host_venv / "python"
+    marker.write_text("#!/bin/sh\necho host\n", encoding="utf-8")
+    marker.chmod(0o755)
+
+    subprocess.check_call(
+        [
+            sys.executable,
+            "-m",
+            "pulse",
+            "init",
+            "--force",
+            "--no-generate",
+            "--link",
+            "none",
+        ],
+        env=env,
+        cwd=str(tmp_path),
+    )
+    assert marker.read_text(encoding="utf-8").startswith("#!/bin/sh")
+    assert (tmp_path / ".pulse" / "bin" / "pulse").is_file()
+    bin_text = (tmp_path / ".pulse" / "bin" / "pulse").read_text(encoding="utf-8")
+    assert "PROJECT_ROOT}/.venv" not in bin_text
+    assert "pulse/venv/bin/python" in bin_text
+
+
 def test_init_link_both(tmp_path: Path):
     env = {**os.environ, "PYTHONPATH": str(KIT)}
     subprocess.check_call(
@@ -136,7 +166,6 @@ def test_init_link_both(tmp_path: Path):
             "pulse",
             "init",
             "--force",
-            "--no-venv",
             "--no-generate",
             "--link",
             "both",
@@ -157,6 +186,6 @@ def test_init_prompt_cursor(monkeypatch, tmp_path: Path):
     monkeypatch.setattr("pulse.__main__.sys.stdout.isatty", lambda: True)
     monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))
 
-    init_project(tmp_path, force=True, with_venv=False, generate=False)
+    init_project(tmp_path, force=True, generate=False)
     assert (tmp_path / ".cursor" / "hooks.json").is_file()
     assert not (tmp_path / ".github").exists()
