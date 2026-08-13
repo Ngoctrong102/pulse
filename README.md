@@ -1,11 +1,11 @@
 # pulse
 
-A **project operating system** that lives entirely in **`.pulse/`** inside your repo.
+A **project operating system** that lives entirely in `.pulse/` inside your repo.
 
 ## Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Ngoctrong102/pulse/main/install.sh | bash
+curl -fsSL "https://raw.githubusercontent.com/Ngoctrong102/pulse/main/install.sh" | bash
 ```
 
 ```bash
@@ -29,6 +29,8 @@ pulse cursor link
 pulse github link
 ```
 
+
+
 ## Layout
 
 ```
@@ -38,9 +40,12 @@ your-project/
   src/ …           ← your code, untouched
 ```
 
+
+
 ## Docs
 
-- [`docs/VISION.md`](docs/VISION.md)
-- [`docs/PLUGINS.md`](docs/PLUGINS.md)
-- [`docs/FEATURES.md`](docs/FEATURES.md)
-- [`docs/SCHEMA.md`](docs/SCHEMA.md)
+- `[docs/VISION.md](docs/VISION.md)`
+- `[docs/PLUGINS.md](docs/PLUGINS.md)`
+- `[docs/FEATURES.md](docs/FEATURES.md)`
+- `[docs/SCHEMA.md](docs/SCHEMA.md)`
+

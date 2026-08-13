@@ -128,7 +128,12 @@ resolve_python() {
 log "pulse install → $PREFIX"
 mkdir -p "$PREFIX" "$BIN_DIR"
 
-PYTHON="$(resolve_python)" || exit 1
+# Path only on the last stdout line (defensive if a log ever leaks to stdout).
+PYTHON="$(resolve_python | tail -n 1)" || exit 1
+if [[ ! -x "$PYTHON" ]]; then
+  err "resolved Python is not executable: ${PYTHON:-<empty>}"
+  exit 1
+fi
 
 if [[ ! -x "$VENV/bin/python" ]]; then
   log "  creating venv …"
