@@ -143,7 +143,7 @@ pulse github link
 Commit `.pulse/` if the team should share status (pulse never auto-edits `.gitignore`).
 
 **Agents:** edit cards under `.pulse/features/` (and `.pulse/cleancode/`), not vendored
-`.pulse/tools/` — refresh the engine with `pulse update` from the kit.
+`.pulse/tools/` — refresh the engine with `pulse upgrade` from the kit.
 """
 
 
@@ -280,12 +280,12 @@ def _curl_install_meta() -> dict[str, Any] | None:
 
 
 def _pip_install_latest() -> None:
-    print(f"pulse update: installing latest from {GIT_REPO} …")
+    print(f"pulse upgrade: installing latest from {GIT_REPO} …")
     rc = subprocess.call(
         [sys.executable, "-m", "pip", "install", "-U", PIP_SPEC],
     )
     if rc != 0:
-        _die("pip install failed — fix network/permissions, then retry `pulse update`")
+        _die("pip install failed — fix network/permissions, then retry `pulse upgrade`")
 
 
 def _pip_uninstall() -> None:
@@ -379,37 +379,40 @@ def upgrade_project(target: Path) -> None:
     _write_version_stamp(pulse)
     _bump_meta_pulse_version(pulse / "features" / "_meta.yaml")
 
-    print(f"pulse update → synced {pulse} to kit {__version__}")
+    print(f"pulse upgrade → synced {pulse} to kit {__version__}")
     print("  preserved: features/, cleancode/, plugins/, generated views")
 
 
-def update_cmd(target: Path, *, fetch: bool = True) -> None:
-    """Install latest kit from GitHub, then sync ``.pulse/`` in the project (if any)."""
-    project_root = target.expanduser().resolve()
+def find_pulse_project(start: Path | None = None) -> Path | None:
+    """Nearest directory that contains ``.pulse/`` walking from *start* (cwd by default)."""
+    cur = (start or Path.cwd()).expanduser().resolve()
+    for cand in [cur, *cur.parents]:
+        if (cand / ".pulse").is_dir():
+            return cand
+    return None
+
+
+def upgrade_cmd(*, fetch: bool = True) -> None:
+    """Upgrade the CLI from GitHub, then sync the nearest project ``.pulse/``.
+
+    User-facing: just run ``pulse upgrade`` (no URL, no path).
+    """
     if fetch and os.environ.get("PULSE_NO_FETCH") != "1":
         _pip_install_latest()
         # Re-enter with the freshly installed package (this process still has old code).
-        rc = subprocess.call(
-            [
-                sys.executable,
-                "-m",
-                "pulse",
-                "update",
-                str(project_root),
-                "--no-fetch",
-            ]
-        )
+        # Keep cwd so project discovery still works.
+        rc = subprocess.call([sys.executable, "-m", "pulse", "upgrade", "--no-fetch"])
         if rc != 0:
             raise SystemExit(rc)
         return
 
-    pulse = project_root / ".pulse"
-    if pulse.is_dir():
-        upgrade_project(project_root)
+    root = find_pulse_project()
+    if root is not None:
+        upgrade_project(root)
         return
     print(
-        f"pulse update: package is current ({__version__}); "
-        "no .pulse/ here — run inside a project (or `pulse init`) to sync tools."
+        f"pulse upgrade: CLI is {__version__} "
+        "(no .pulse/ near this directory — only the package was updated)"
     )
 
 
@@ -575,7 +578,7 @@ def github_link(project_root: Path, *, force: bool) -> None:
     project_root = project_root.expanduser().resolve()
     src = project_root / ".pulse" / "github"
     if not src.is_dir():
-        _die("missing .pulse/github — run `pulse init` (or `pulse update`) first")
+        _die("missing .pulse/github — run `pulse init` (or `pulse upgrade`) first")
     dst = project_root / ".github"
     dst.mkdir(parents=True, exist_ok=True)
 
@@ -712,11 +715,10 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     up = sub.add_parser(
-        "update",
-        aliases=["upgrade"],
-        help="Install latest pulse from GitHub, then sync .pulse/ in this project",
+        "upgrade",
+        aliases=["update"],
+        help="Upgrade pulse (from GitHub) and sync .pulse/ in the current project",
     )
-    up.add_argument("path", nargs="?", default=".")
     up.add_argument(
         "--no-fetch",
         action="store_true",
@@ -772,7 +774,7 @@ def main(argv: list[str] | None = None) -> int:
         github_unlink(Path(args.path))
         return 0
     if args.cmd in {"update", "upgrade"}:
-        update_cmd(Path(args.path), fetch=not bool(getattr(args, "no_fetch", False)))
+        upgrade_cmd(fetch=not bool(getattr(args, "no_fetch", False)))
         return 0
     if args.cmd == "uninstall":
         _pip_uninstall()

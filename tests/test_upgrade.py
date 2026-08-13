@@ -57,9 +57,9 @@ def test_upgrade_refreshes_tools_preserves_cards(demo: Path):
 
     env = {**os.environ, "PYTHONPATH": str(KIT), "PULSE_NO_FETCH": "1"}
     subprocess.check_call(
-        [sys.executable, "-m", "pulse", "update", "--no-fetch", str(demo)],
+        [sys.executable, "-m", "pulse", "upgrade", "--no-fetch"],
         env=env,
-        cwd=str(KIT),
+        cwd=str(demo),
     )
 
     restored = marker.read_text(encoding="utf-8")

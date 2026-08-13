@@ -13,7 +13,7 @@ Prefer the CLI:
 .pulse/bin/pulse generate
 ```
 
-Edit **cards** under `.pulse/features/` / `.pulse/cleancode/`. Do **not** edit vendored `.pulse/tools/` — refresh with `pulse update`.
+Edit **cards** under `.pulse/features/` / `.pulse/cleancode/`. Do **not** edit vendored `.pulse/tools/` — refresh with `pulse upgrade`.
 
 ## When you must sync a card
 

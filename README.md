@@ -32,7 +32,7 @@ What it does:
 Needs only `curl` (+ network). No project `.venv` required for the CLI itself.
 
 ```bash
-pulse update                 # pull latest + sync .pulse/ in this project
+pulse upgrade                # that's it — pulls latest + syncs nearest .pulse/
 pulse uninstall              # remove the CLI install (project cards stay)
 ```
 
@@ -77,7 +77,7 @@ your-project/
 
 `code_roots` in `.pulse/features/_meta.yaml` point at **your** product folders (relative to project root).
 
-Derived views under `.pulse/` (`BOARD.md`, `DRIFT.md`, reports) are summaries — prefer `next --prompt` in chat. Agents edit **cards**, not `.pulse/tools/` (`pulse update` refreshes the engine).
+Derived views under `.pulse/` (`BOARD.md`, `DRIFT.md`, reports) are summaries — prefer `next --prompt` in chat. Agents edit **cards**, not `.pulse/tools/` (`pulse upgrade` refreshes the engine).
 
 ## Docs
 
