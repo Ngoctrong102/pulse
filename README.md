@@ -22,6 +22,13 @@ pulse init
 
 That’s it — project name / tag prefix come from the folder. Creates `.pulse/` + `.venv`, runs `generate`, then asks whether to link Cursor / GitHub Copilot rules.
 
+Later (switch tools, or you skipped linking at init):
+
+```bash
+pulse cursor link
+pulse github link
+```
+
 ## Layout
 
 ```
