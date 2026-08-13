@@ -409,7 +409,7 @@ def _run_vendored(argv: list[str]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    known = {"init", "upgrade", "run", "version", "cursor", "-h", "--help"}
+    known = {"init", "upgrade", "update", "run", "version", "cursor", "-h", "--help"}
     if argv and argv[0] not in known and not argv[0].startswith("-"):
         return _run_vendored(argv)
 
@@ -430,7 +430,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     init.add_argument("--force", action="store_true")
 
-    up = sub.add_parser("upgrade", help="Refresh .pulse/tools (+ cursor templates) from this kit")
+    up = sub.add_parser(
+        "upgrade",
+        aliases=["update"],
+        help="Refresh .pulse/tools (+ cursor templates) from this kit",
+    )
     up.add_argument("path", nargs="?", default=".")
 
     cur = sub.add_parser("cursor", help="Optional Cursor agent integration")
@@ -461,7 +465,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "cursor" and args.cursor_cmd == "unlink":
         cursor_unlink(Path(args.path))
         return 0
-    if args.cmd == "upgrade":
+    if args.cmd in {"upgrade", "update"}:
         upgrade_project(Path(args.path))
         return 0
     if args.cmd == "init":
