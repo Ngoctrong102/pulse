@@ -20,13 +20,14 @@ cd your-project
 pulse init
 ```
 
-That’s it — project name / tag prefix come from the folder. Creates `.pulse/`, runs `generate`, then asks whether to link Cursor / GitHub Copilot rules. Does **not** create or touch a project `.venv`.
+That’s it — project name / tag prefix come from the folder. Creates `.pulse/`, runs `generate`, then asks whether to link Cursor / GitHub Copilot rules and whether to install the Pulse board extension. Does **not** create or touch a project `.venv`.
 
 Later (switch tools, or you skipped linking at init):
 
 ```bash
 pulse cursor link
 pulse github link
+pulse extension install   # Cursor / VS Code status board
 ```
 
 

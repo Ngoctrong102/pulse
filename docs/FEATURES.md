@@ -11,6 +11,7 @@
 | Quality-raise (self-check → backlog) | done |
 | Docs↔code sync rule + stop-hook | done |
 | Configurable `tag_prefix` (whole-repo tag scan) | done |
+| IDE board extension (`pulse extension install`) | done |
 | Plugins (builtin / host / pip) | done |
 | Spec Kit prompts | optional (`speckit`) |
 

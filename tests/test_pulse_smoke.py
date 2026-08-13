@@ -18,7 +18,7 @@ def demo(tmp_path: Path):
     root.mkdir()
     env = {**os.environ, "PYTHONPATH": str(KIT)}
     subprocess.check_call(
-        [sys.executable, "-m", "pulse", "init", "--force", "--no-venv", "--no-generate"],
+        [sys.executable, "-m", "pulse", "init", "--force", "--no-venv", "--no-generate", "--no-extension"],
         env=env,
         cwd=str(root),
     )

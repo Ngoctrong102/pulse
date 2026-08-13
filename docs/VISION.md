@@ -11,6 +11,7 @@ On `init`, pulse writes **``.pulse/``** inside the host project only.
 - No automatic edits to ``.gitignore`` (commit ``.pulse/`` when the team should share status)
 - Agent rules stay under ``.pulse/cursor/`` / ``.pulse/github/`` until you link
   them (``pulse init`` asks, or ``pulse cursor link`` / ``pulse github link``)
+- Board UI: ``pulse extension install`` (Cursor / VS Code); also offered at ``init``
 
 ## Jobs to be done
 

@@ -212,11 +212,97 @@ def _prompt_agent_links() -> set[str]:
         print("  pick c / g / b / n")
 
 
+def _prompt_extension_install() -> bool:
+    """Ask once on a TTY whether to install the board extension."""
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        return False
+    if not _ide_cli_bins():
+        print("Install Pulse board extension? (no Cursor/VS Code CLI on PATH — skipped)")
+        return False
+    print("Install Pulse board extension for Cursor / VS Code? [Y/n]")
+    try:
+        raw = input("> ").strip().lower()
+    except EOFError:
+        return False
+    return raw in {"", "y", "yes"}
+
+
 def _apply_agent_links(project_root: Path, links: set[str], *, force: bool) -> None:
     if "cursor" in links:
         cursor_link(project_root, force=force)
     if "github" in links:
         github_link(project_root, force=force)
+
+
+_EXTENSION_ID = "pulse.pulse-board"
+
+
+def _extension_vsix() -> Path:
+    embedded = EMBED_ROOT / "extension" / "pulse-board.vsix"
+    if embedded.is_file():
+        return embedded
+    # Dev checkout fallback
+    root = Path(__file__).resolve().parents[1]
+    for cand in sorted((root / "extension").glob("pulse-board*.vsix")):
+        return cand
+    return embedded
+
+
+def _ide_cli_bins() -> list[tuple[str, str]]:
+    """Return ``(label, executable)`` for Cursor / VS Code CLIs on PATH."""
+    found: list[tuple[str, str]] = []
+    for label, names in (
+        ("cursor", ("cursor",)),
+        ("code", ("code", "code-insiders")),
+    ):
+        for name in names:
+            path = shutil.which(name)
+            if path:
+                found.append((label, path))
+                break
+    return found
+
+
+def extension_install(*, ide: str = "auto") -> None:
+    """Install the Pulse board VSIX into Cursor and/or VS Code."""
+    vsix = _extension_vsix()
+    if not vsix.is_file():
+        _die(
+            "extension VSIX missing — reinstall pulse "
+            f"(expected {EMBED_ROOT / 'extension' / 'pulse-board.vsix'})"
+        )
+
+    bins = _ide_cli_bins()
+    if ide in {"cursor", "code"}:
+        bins = [(label, path) for label, path in bins if label == ide]
+    if not bins:
+        _die(
+            "no Cursor/VS Code CLI on PATH — open the IDE and install from "
+            f"{vsix}, or add `cursor` / `code` to PATH"
+        )
+
+    ok = 0
+    for label, exe in bins:
+        print(f"pulse extension install → {label} ({exe})")
+        rc = subprocess.call([exe, "--install-extension", str(vsix), "--force"])
+        if rc == 0:
+            ok += 1
+        else:
+            print(f"  failed for {label} (exit {rc})", file=sys.stderr)
+    if ok == 0:
+        _die("extension install failed for all IDEs")
+    print(f"  installed {_EXTENSION_ID} from {vsix.name}")
+
+
+def extension_uninstall(*, ide: str = "auto") -> None:
+    bins = _ide_cli_bins()
+    if ide in {"cursor", "code"}:
+        bins = [(label, path) for label, path in bins if label == ide]
+    if not bins:
+        _die("no Cursor/VS Code CLI on PATH")
+    for label, exe in bins:
+        print(f"pulse extension uninstall → {label}")
+        subprocess.call([exe, "--uninstall-extension", _EXTENSION_ID])
 
 
 def init_project(
@@ -227,6 +313,7 @@ def init_project(
     force: bool = False,
     generate: bool = True,
     link: str | None = None,
+    install_extension: bool | None = None,
     with_venv: bool = False,  # deprecated no-op (never touch host .venv)
 ) -> None:
     del with_venv  # kept for call-site back-compat only
@@ -289,12 +376,29 @@ def init_project(
         links = parsed
     _apply_agent_links(project_root, links, force=force)
 
+    if install_extension is None:
+        want_ext = _prompt_extension_install()
+    else:
+        want_ext = bool(install_extension)
+    if want_ext:
+        try:
+            extension_install(ide="auto")
+        except SystemExit:
+            print(
+                "pulse: hint — install later with `pulse extension install`",
+                file=sys.stderr,
+            )
+
     print(f"pulse init → {pulse}")
     print(f"  project={project}  tag_prefix={tag_prefix}")
     if links:
         print(f"  linked: {', '.join(sorted(links))}")
     else:
         print("  agent rules: skipped (later: pulse cursor link · pulse github link)")
+    if want_ext:
+        print("  extension: install attempted (or run pulse extension install)")
+    else:
+        print("  extension: skipped (later: pulse extension install)")
 
 
 def _engine_python(project_root: Path) -> Path:
@@ -759,6 +863,7 @@ def main(argv: list[str] | None = None) -> int:
         "cursor",
         "github",
         "copilot",
+        "extension",
         "-h",
         "--help",
     }
@@ -789,6 +894,8 @@ def main(argv: list[str] | None = None) -> int:
         choices=["cursor", "github", "both", "none"],
         help=argparse.SUPPRESS,  # scripts/CI; interactive prompt on TTY when omitted
     )
+    init.add_argument("--extension", action="store_true", help=argparse.SUPPRESS)
+    init.add_argument("--no-extension", action="store_true", help=argparse.SUPPRESS)
 
     up = sub.add_parser(
         "upgrade",
@@ -823,6 +930,22 @@ def main(argv: list[str] | None = None) -> int:
     gh_unlink = gh_sub.add_parser("unlink", help="Remove pulse-owned Copilot instruction files")
     gh_unlink.add_argument("path", nargs="?", default=".")
 
+    ext = sub.add_parser("extension", help="Install / uninstall the Pulse board IDE extension")
+    ext_sub = ext.add_subparsers(dest="extension_cmd", required=True)
+    ext_install = ext_sub.add_parser("install", help="Install into Cursor and/or VS Code")
+    ext_install.add_argument(
+        "--ide",
+        default="auto",
+        choices=["auto", "cursor", "code"],
+        help="Which IDE CLI to use (default: all found on PATH)",
+    )
+    ext_uninstall = ext_sub.add_parser("uninstall", help="Uninstall from Cursor and/or VS Code")
+    ext_uninstall.add_argument(
+        "--ide",
+        default="auto",
+        choices=["auto", "cursor", "code"],
+    )
+
     run = sub.add_parser("run", help="Forward to .pulse/bin/pulse")
     run.add_argument("args", nargs=argparse.REMAINDER)
 
@@ -849,6 +972,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd in {"github", "copilot"} and getattr(args, "github_cmd", None) == "unlink":
         github_unlink(Path(args.path))
         return 0
+    if args.cmd == "extension" and args.extension_cmd == "install":
+        extension_install(ide=str(args.ide))
+        return 0
+    if args.cmd == "extension" and args.extension_cmd == "uninstall":
+        extension_uninstall(ide=str(args.ide))
+        return 0
     if args.cmd in {"update", "upgrade"}:
         upgrade_cmd(fetch=not bool(getattr(args, "no_fetch", False)))
         return 0
@@ -857,6 +986,15 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "init":
         target = Path(args.path)
+        if bool(getattr(args, "extension", False)) and bool(getattr(args, "no_extension", False)):
+            _die("use only one of --extension / --no-extension")
+        install_ext: bool | None
+        if getattr(args, "extension", False):
+            install_ext = True
+        elif getattr(args, "no_extension", False):
+            install_ext = False
+        else:
+            install_ext = None
         init_project(
             target,
             project=args.project,  # may be None → inferred
@@ -864,6 +1002,7 @@ def main(argv: list[str] | None = None) -> int:
             force=bool(args.force),
             generate=not bool(getattr(args, "no_generate", False)),
             link=getattr(args, "link", None),
+            install_extension=install_ext,
         )
         return 0
     return 2

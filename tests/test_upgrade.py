@@ -17,7 +17,7 @@ KIT = Path(__file__).resolve().parents[1]
 def demo(tmp_path: Path):
     env = {**os.environ, "PYTHONPATH": str(KIT)}
     subprocess.check_call(
-        [sys.executable, "-m", "pulse", "init", "--force", "--no-venv", "--no-generate"],
+        [sys.executable, "-m", "pulse", "init", "--force", "--no-venv", "--no-generate", "--no-extension"],
         env=env,
         cwd=str(tmp_path),
     )
@@ -159,6 +159,7 @@ def test_init_does_not_create_host_venv(tmp_path: Path):
             "init",
             "--force",
             "--no-generate",
+            "--no-extension",
             "--link",
             "none",
         ],
@@ -183,6 +184,7 @@ def test_init_link_both(tmp_path: Path):
             "init",
             "--force",
             "--no-generate",
+            "--no-extension",
             "--link",
             "both",
         ],
@@ -202,6 +204,6 @@ def test_init_prompt_cursor(monkeypatch, tmp_path: Path):
     monkeypatch.setattr("pulse.__main__.sys.stdout.isatty", lambda: True)
     monkeypatch.setattr("builtins.input", lambda _prompt="": next(answers))
 
-    init_project(tmp_path, force=True, generate=False)
+    init_project(tmp_path, force=True, generate=False, install_extension=False)
     assert (tmp_path / ".cursor" / "hooks.json").is_file()
     assert not (tmp_path / ".github").exists()

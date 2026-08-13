@@ -8,3 +8,4 @@ extension/node_modules/
 extension/out/
 .pytest_cache/
 .DS_Store
+extension/pulse-board-*.vsix
